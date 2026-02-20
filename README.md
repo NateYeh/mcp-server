@@ -12,7 +12,7 @@
 |------|------|
 | 程式執行 | Python、Shell、MySQL |
 | 套件管理 | pip 安裝 |
-| 檔案操作 | 行替換、區塊替換（內容簽名） |
+| 檔案操作 | 讀取檔案、行替換、區塊替換（內容簽名） |
 | 網頁操作 | Playwright CDP、Ollama Web API |
 | 外部整合 | TMDB、Gmail、圖片辨識 |
 
@@ -70,6 +70,7 @@ mcp_server/
 | `execute_mysql` | `execute_mysql/execute_mysql.py` | `sql`, `database` |
 | `install_package` | `install_package/install_package.py` | `package` |
 | `get_python_version` | `get_python_version/get_python_version.py` | - |
+| `read_file` | `read_file/read_file.py` | `file_path`, `start_line`, `end_line`, `show_line_numbers` |
 | `replace_lines` | `replace_lines/replace_lines.py` | `file_path`, `start_line`, `end_line`, `new_content` |
 | `replace_block` | `replace_block/replace_block.py` | `file_path`, `replace_with`, (`find_content` \| `find_signature`)* |
 
