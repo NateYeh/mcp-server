@@ -168,6 +168,8 @@ format_tool_result() → MCP JSON Response
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
+| `MCP_HOST` | `0.0.0.0` | 伺服器監聯位址 |
+| `MCP_PORT` | `30786` | 伺服器 Port |
 | `PYTHON_WORK_DIR` | `./workspace` | 臨時檔案目錄（啟動時自動清空） |
 | `MCP_EXEC_TIMEOUT` | `300` | 最大執行秒數 |
 | `MCP_MAX_INPUT` | `1000000` | 最大輸入長度 |

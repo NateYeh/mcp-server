@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Request, status  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
-from mcp_server.config import API_KEYS, MAX_EXECUTION_TIME, WORK_DIR  # noqa: E402
+from mcp_server.config import API_KEYS, MAX_EXECUTION_TIME, MCP_HOST, MCP_PORT, WORK_DIR  # noqa: E402
 from mcp_server.schemas import MCPError  # noqa: E402
 from mcp_server.security import get_allowed_tools, is_tool_allowed, verify_api_key  # noqa: E402
 
@@ -314,4 +314,4 @@ if __name__ == "__main__":
     else:
         logger.warning("⚠️ API Key 認證: 已停用（開發模式）")
 
-    uvicorn.run(app, host="0.0.0.0", port=30786)
+    uvicorn.run(app, host=MCP_HOST, port=MCP_PORT)
