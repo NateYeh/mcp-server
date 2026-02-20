@@ -11,6 +11,7 @@
 | 類別 | 功能 |
 |------|------|
 | 程式執行 | Python、Shell、MySQL |
+| 系統資訊 | Python 版本查詢 |
 | 套件管理 | pip 安裝 |
 | 檔案操作 | 讀取檔案、寫入檔案、行替換、區塊替換（內容簽名） |
 | 網頁操作 | Playwright CDP、Ollama Web API |
@@ -24,8 +25,8 @@
 mcp_server/
 ├── pyproject.toml          # 專案設定（Python 3.10+、依賴）
 ├── .env                    # 環境變數設定
-├── AI_CONTEXT.md           # 本文件
-├── python_workspace/       # Python 臨時執行目錄（自動清理）
+├── README.md               # 本文件（AI 開發指引）
+├── workspace/              # Python 臨時執行目錄（自動清理）
 ├── logs/                   # 日誌目錄
 └── src/mcp_server/         # 主要程式碼目錄（src-layout）
     ├── __init__.py
@@ -35,6 +36,7 @@ mcp_server/
     ├── schemas.py          # ExecutionResult、MCPError 資料模型
     ├── security.py         # Bearer Token 認證、權限檢查
     ├── utils.py            # format_tool_result() 格式化輸出
+    ├── api/                # API 相關模組
     ├── base/               # 基礎模組
     │   ├── data_structures.py
     │   └── logging_config.py
@@ -70,13 +72,13 @@ mcp_server/
 | `execute_mysql` | `execute_mysql/execute_mysql.py` | `sql`, `database` |
 | `install_package` | `install_package/install_package.py` | `package` |
 | `get_python_version` | `get_python_version/get_python_version.py` | - |
-| `read_file` | `read_file/read_file.py` | `file_path`, `start_line`, `end_line`, `show_line_numbers` |
-| `write_file` | `write_file/write_file.py` | `file_path`, `content`, `mode`, `backup` |
-| `replace_lines` | `replace_lines/replace_lines.py` | `file_path`, `start_line`, `end_line`, `new_content` |
-| `replace_block` | `replace_block/replace_block.py` | `file_path`, `replace_with`, (`find_content` \| `find_signature`)* |
+| `read_file` | `read_file/read_file.py` | `file_path`, `start_line`, `end_line`, `show_line_numbers`, `max_lines`, `encoding` |
+| `write_file` | `write_file/write_file.py` | `file_path`, `content`, `mode`, `encoding`, `create_dirs`, `backup` |
+| `replace_lines` | `replace_lines/replace_lines.py` | `file_path`, `start_line`, `end_line`, `new_content`, `dry_run`, `validate_syntax` |
+| `replace_block` | `replace_block/replace_block.py` | `file_path`, `replace_with`, (`find_content` \| `find_signature`)*, `occurrence`, `dry_run`, `validate_syntax` |
 
 *註: `find_content` 和 `find_signature` 必須提供其中一個，不可同時使用 |
-| `search_tmdb` | `tmdb_search/tmdb_search.py` | `query`, `type` |
+| `search_tmdb` | `tmdb_search/tmdb_search.py` | `title`, `year`, `media_type`, `language` |
 | `image_recognition` | `image_recognition/image_recognition.py` | `image_url`, `prompt` |
 | `web_search` | `web_ollama/web_ollama.py` | `query` |
 | `web_fetch` | `web_ollama/web_ollama.py` | `url` |
@@ -166,9 +168,10 @@ format_tool_result() → MCP JSON Response
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `PYTHON_WORK_DIR` | `./python_workspace` | 臨時檔案目錄（啟動時自動清空） |
+| `PYTHON_WORK_DIR` | `./workspace` | 臨時檔案目錄（啟動時自動清空） |
 | `MCP_EXEC_TIMEOUT` | `300` | 最大執行秒數 |
-| `MCP_MAX_INPUT/OUTPUT` | `1000000` | 最大輸入/輸出長度 |
+| `MCP_MAX_INPUT` | `1000000` | 最大輸入長度 |
+| `MCP_MAX_OUTPUT` | `1000000` | 最大輸出長度 |
 | `MYSQL_*` | - | MySQL 連線設定 |
 | `TMDB_API_KEY` | - | TMDB API Key |
 | `OLLAMA_API_KEY` | - | Ollama Web API Key |
@@ -186,6 +189,7 @@ src/mcp_server/
 │       ├── schemas.py (資料模型)
 │       ├── security.py (認證)
 │       ├── utils.py (格式化)
+│       ├── api/ (API 相關模組)
 │       ├── base/ (基礎模組)
 │       │   ├── data_structures.py
 │       │   └── logging_config.py
