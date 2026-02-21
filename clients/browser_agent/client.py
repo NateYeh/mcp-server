@@ -60,6 +60,10 @@ class WebSocketClient:
             "element_get_attribute": self._handle_element_get_attribute,
             "element_screenshot": self._handle_element_screenshot,
             "element_scroll_into_view": self._handle_element_scroll_into_view,
+            # Cookies 操作
+            "get_cookies": self._handle_get_cookies,
+            "add_cookie": self._handle_add_cookie,
+            "clear_cookies": self._handle_clear_cookies,
         }
 
     def _is_connected(self) -> bool:
@@ -383,6 +387,22 @@ class WebSocketClient:
             scroll_type="selector",
             selector=params["selector"],
         )
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Cookies 處理器
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    async def _handle_get_cookies(self, params: dict[str, Any]) -> dict[str, Any]:
+        """處理取得 cookies 指令"""
+        return await self._browser.get_cookies()
+
+    async def _handle_add_cookie(self, params: dict[str, Any]) -> dict[str, Any]:
+        """處理新增 cookie 指令"""
+        return await self._browser.add_cookie(cookie=params["cookie"])
+
+    async def _handle_clear_cookies(self, params: dict[str, Any]) -> dict[str, Any]:
+        """處理清除 cookies 指令"""
+        return await self._browser.clear_cookies()
 
     async def stop(self) -> None:
         """停止客戶端"""

@@ -86,6 +86,8 @@ mcp_server/
 | `web_screenshot` | `web_playwright/web_playwright.py` | `full_page` |
 | `web_extract` | `web_playwright/web_playwright.py` | `selector`, `extract_type` |
 | `web_click/fill/evaluate/wait/scroll` | `web_playwright/web_playwright.py` | 對應操作參數 |
+| `web_get_url/title/status` | `web_playwright/web_playwright.py` | 取得頁面資訊 |
+| `web_get/set/clear_cookies` | `web_playwright/web_playwright.py` | Cookies 讀寫操作 |
 | `gmail_*` | `gmail/gmail.py` | 多種郵件操作 |
 
 ---

@@ -836,3 +836,167 @@ async def handle_web_get_status(args: dict[str, Any]) -> ExecutionResult:
     except Exception as e:
         logger.exception(f"取得狀態失敗: {e}")
         return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e), metadata={"connected": False, "cdp_endpoint": CDP_ENDPOINT})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tool: web_get_cookies
+# ═══════════════════════════════════════════════════════════════════════════════
+@registry.register(
+    name="web_get_cookies",
+    description="取得當前頁面的所有 Cookies。",
+    input_schema={
+        "type": "object",
+        "properties": {},
+        "required": [],
+    },
+)
+async def handle_web_get_cookies(args: dict[str, Any]) -> ExecutionResult:
+    """處理 web_get_cookies 請求"""
+    try:
+        page = await browser_manager.get_page()
+        start_time = datetime.now()
+
+        # 支援遠端模式
+        if browser_manager.is_remote:
+            cookies = await page.get_cookies()
+        else:
+            context = page.context
+            cookies = await context.cookies()
+
+        execution_time = (datetime.now() - start_time).total_seconds()
+
+        # 格式化輸出
+        stdout_parts = [f"🍪 取得 {len(cookies)} 個 Cookies:"]
+        for i, cookie in enumerate(cookies[:20]):  # 最多顯示 20 個
+            name = cookie.get("name", "")
+            domain = cookie.get("domain", "")
+            stdout_parts.append(f"  {i + 1}. {name} ({domain})")
+
+        if len(cookies) > 20:
+            stdout_parts.append(f"  ... 還有 {len(cookies) - 20} 個")
+
+        return ExecutionResult(
+            success=True,
+            stdout="\n".join(stdout_parts),
+            execution_time=f"{execution_time:.3f}s",
+            metadata={"cookies": cookies, "count": len(cookies)},
+        )
+    except Exception as e:
+        logger.exception(f"取得 Cookies 失敗: {e}")
+        return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tool: web_set_cookie
+# ═══════════════════════════════════════════════════════════════════════════════
+@registry.register(
+    name="web_set_cookie",
+    description="設定單一 Cookie。需提供 name 和 value，可選填 domain、path、expires 等。",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Cookie 名稱"},
+            "value": {"type": "string", "description": "Cookie 值"},
+            "domain": {"type": "string", "description": "Cookie 所属網域（可選）"},
+            "path": {"type": "string", "default": "/", "description": "Cookie 路路徑（預設 /）"},
+            "expires": {"type": "integer", "description": "過期時間（Unix timestamp，可選）"},
+            "http_only": {"type": "boolean", "default": False, "description": "是否為 HttpOnly"},
+            "secure": {"type": "boolean", "default": False, "description": "是否僅 HTTPS 傳輸"},
+            "same_site": {
+                "type": "string",
+                "enum": ["Strict", "Lax", "None"],
+                "default": "Lax",
+                "description": "SameSite 屬性",
+            },
+        },
+        "required": ["name", "value"],
+    },
+)
+async def handle_web_set_cookie(args: dict[str, Any]) -> ExecutionResult:
+    """處理 web_set_cookie 請求"""
+    name = args.get("name", "")
+    value = args.get("value", "")
+
+    if not name:
+        return ExecutionResult(success=False, error_type="ValueError", error_message="name 不可為空")
+
+    try:
+        page = await browser_manager.get_page()
+        start_time = datetime.now()
+
+        # 構建 cookie 物件
+        cookie: dict[str, Any] = {
+            "name": name,
+            "value": value,
+        }
+
+        # 可選參數
+        if args.get("domain"):
+            cookie["domain"] = args["domain"]
+        if args.get("path"):
+            cookie["path"] = args["path"]
+        if args.get("expires"):
+            cookie["expires"] = args["expires"]
+        if args.get("http_only"):
+            cookie["httpOnly"] = args["http_only"]
+        if args.get("secure"):
+            cookie["secure"] = args["secure"]
+        if args.get("same_site"):
+            cookie["sameSite"] = args["same_site"]
+
+        # 設定 cookie
+        if browser_manager.is_remote:
+            await page.add_cookies([cookie])
+        else:
+            context = page.context
+            await context.add_cookies([cookie])
+
+        execution_time = (datetime.now() - start_time).total_seconds()
+
+        return ExecutionResult(
+            success=True,
+            stdout=f"✅ 已設定 Cookie: {name}",
+            execution_time=f"{execution_time:.3f}s",
+            metadata={"cookie": cookie},
+        )
+    except Exception as e:
+        logger.exception(f"設定 Cookie 失敗: {e}")
+        return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tool: web_clear_cookies
+# ═══════════════════════════════════════════════════════════════════════════════
+@registry.register(
+    name="web_clear_cookies",
+    description="清除當前頁面的所有 Cookies。",
+    input_schema={
+        "type": "object",
+        "properties": {},
+        "required": [],
+    },
+)
+async def handle_web_clear_cookies(args: dict[str, Any]) -> ExecutionResult:
+    """處理 web_clear_cookies 請求"""
+    try:
+        page = await browser_manager.get_page()
+        start_time = datetime.now()
+
+        # 清除 cookies
+        if browser_manager.is_remote:
+            await page.clear_cookies()
+        else:
+            context = page.context
+            await context.clear_cookies()
+
+        execution_time = (datetime.now() - start_time).total_seconds()
+
+        return ExecutionResult(
+            success=True,
+            stdout="✅ 已清除所有 Cookies",
+            execution_time=f"{execution_time:.3f}s",
+            metadata={},
+        )
+    except Exception as e:
+        logger.exception(f"清除 Cookies 失敗: {e}")
+        return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e))

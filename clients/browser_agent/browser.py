@@ -333,3 +333,46 @@ class BrowserController:
             raise RuntimeError(f"元素索引超出範圍: {index} >= {len(elements)}")
         text = await elements[index].inner_text()
         return {"text": text}
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Cookies 操作方法
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    async def get_cookies(self) -> dict[str, Any]:
+        """
+        取得當前頁面的所有 cookies
+
+        Returns:
+            cookies 列表
+        """
+        page = await self._ensure_page()
+        context = page.context
+        cookies = await context.cookies()
+        return {"cookies": cookies, "count": len(cookies)}
+
+    async def add_cookie(self, cookie: dict[str, Any]) -> dict[str, Any]:
+        """
+        新增 cookie
+
+        Args:
+            cookie: cookie 物件，需包含 name, value, 可選 domain, path 等
+
+        Returns:
+            操作結果
+        """
+        page = await self._ensure_page()
+        context = page.context
+        await context.add_cookies([cookie])
+        return {"success": True, "cookie": cookie}
+
+    async def clear_cookies(self) -> dict[str, Any]:
+        """
+        清除當前 context 的所有 cookies
+
+        Returns:
+            操作結果
+        """
+        page = await self._ensure_page()
+        context = page.context
+        await context.clear_cookies()
+        return {"success": True}

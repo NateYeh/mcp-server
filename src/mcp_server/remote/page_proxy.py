@@ -281,6 +281,37 @@ class PageProxy:
             timeout=timeout / 1000 + 5,
         )
 
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Cookies 操作方法
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    async def get_cookies(self) -> list[dict[str, Any]]:
+        """
+        取得當前頁面的所有 cookies
+
+        Returns:
+            cookies 列表
+        """
+        result = await remote_connection_manager.send_command("get_cookies", {})
+        return result.get("cookies", [])
+
+    async def add_cookies(self, cookies: list[dict[str, Any]]) -> None:
+        """
+        新增 cookies
+
+        Args:
+            cookies: cookie 物件列表
+        """
+        for cookie in cookies:
+            await remote_connection_manager.send_command(
+                "add_cookie",
+                {"cookie": cookie},
+            )
+
+    async def clear_cookies(self) -> None:
+        """清除所有 cookies"""
+        await remote_connection_manager.send_command("clear_cookies", {})
+
 
 class ElementProxy:
     """
