@@ -130,7 +130,9 @@ API_KEYS = {
     "sk-xxx": {"tools": ["*"]},           # 全部權限
     "sk-yyy": {"tools": ["execute_python", "replace_block"]},  # 僅特定 tools
     "sk-zzz": {"tools": ["web_*"]},       # wildcard: 所有 web_ 開頭的 tools
-    "sk-aaa": {"tools": ["web_*", "read_file", "write_file"]}  # 混合使用
+    "sk-aaa": {"tools": ["web_*", "read_file", "write_file"]},  # 混合使用
+    "sk-bbb": {"tools": ["web_*"], "exclude_tools": ["web_screenshot"]},  # 排除特定 tool
+    "sk-ccc": {"tools": ["*"], "exclude_tools": ["web_*", "execute_mysql"]}  # 全部權限但排除
 }
 ```
 
@@ -141,6 +143,13 @@ API_KEYS = {
 | `["web_*"]` | 開放所有 `web_` 開頭的 tools (web_search, web_fetch, web_navigate 等) |
 | `["execute_*"]` | 開放所有 `execute_` 開頭的 tools |
 | `["gmail_*"]` | 開放所有 `gmail_` 開頭的 tools |
+
+**exclude_tools 排除清單**（優先於 `tools` 允許清單）:
+| 設定 | 效果 |
+|------|------|
+| `"exclude_tools": ["web_screenshot"]` | 排除特定 tool |
+| `"exclude_tools": ["web_*"]` | 排除所有 `web_` 開頭的 tools |
+| `"exclude_tools": ["web_*", "execute_mysql", "gmail_*"]` | 排除多個 tools（混合 wildcard） |
 
 ### 5.2 危險指令攔截
 
