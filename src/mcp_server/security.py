@@ -117,6 +117,34 @@ def is_tool_allowed(request: Request, tool_name: str) -> bool:
     return any(fnmatch.fnmatch(tool_name, pattern) for pattern in allowed_tools)
 
 
+def filter_allowed_tools(request: Request, all_tools: list[dict]) -> list[dict]:
+    """
+    根據權限過濾 tools 清單
+
+    支援 wildcard 模式匹配：
+    - ["*"] 表示所有 tools 都允許
+    - ["web_*"] 表示所有 web_ 開頭的 tools 都允許
+
+    Args:
+        request: FastAPI Request 物件
+        all_tools: 所有 tools 的清單，每個 tool 是一個 dict，包含 "name" 鍵
+
+    Returns:
+        list[dict]: 過濾後的 tools 清單
+    """
+    allowed_tools = get_allowed_tools(request)
+
+    # ["*"] 表示所有 tools 都允許
+    if "*" in allowed_tools:
+        return all_tools
+
+    # 過濾出允許的 tools（支援 wildcard）
+    return [
+        tool for tool in all_tools
+        if any(fnmatch.fnmatch(tool.get("name", ""), pattern) for pattern in allowed_tools)
+    ]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Gmail 多帳號相關函數
 # ═══════════════════════════════════════════════════════════════════════════════

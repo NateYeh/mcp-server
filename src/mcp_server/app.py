@@ -27,7 +27,7 @@ from mcp_server.config import (  # noqa: E402
     WORK_DIR,
 )
 from mcp_server.schemas import MCPError  # noqa: E402
-from mcp_server.security import get_allowed_tools, is_tool_allowed, verify_api_key  # noqa: E402
+from mcp_server.security import filter_allowed_tools, is_tool_allowed, verify_api_key  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 關鍵：載入所有 Tools（透過 tools/__init__.py 自動註冊）
@@ -218,24 +218,18 @@ def _handle_tools_list(request: Request) -> dict:
     """
     處理 tools/list method - 從 registry 取得，並根據權限過濾
 
+    支援 wildcard 模式匹配：
+    - ["*"] 表示所有 tools 都允許
+    - ["web_*"] 表示所有 web_ 開頭的 tools 都允許
+
     Args:
         request: FastAPI Request 物件，用於取得權限資訊
 
     Returns:
         dict: 包含允許使用的 tools 清單
     """
-    allowed_tools = get_allowed_tools(request)
     all_tools = registry.list_tools()
-
-    # ["*"] 表示所有 tools 都允許
-    if "*" in allowed_tools:
-        return {"tools": all_tools}
-
-    # 過濾出允許的 tools
-    filtered_tools = [
-        tool for tool in all_tools
-        if tool.get("name") in allowed_tools
-    ]
+    filtered_tools = filter_allowed_tools(request, all_tools)
     return {"tools": filtered_tools}
 
 
