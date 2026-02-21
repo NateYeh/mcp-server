@@ -23,15 +23,15 @@ import logging
 import sys
 from pathlib import Path
 
-# 將專案根目錄加入 sys.path（必須在 import browser_agent 之前）
-project_root = Path(__file__).parent.parent.parent / "src"
-if project_root.exists():
-    sys.path.insert(0, str(project_root))
+# 將當前目錄加入 sys.path（支援直接執行）
+_current_dir = Path(__file__).parent
+if str(_current_dir) not in sys.path:
+    sys.path.insert(0, str(_current_dir))
 
 # ruff: noqa: E402
-from browser_agent.browser import BrowserController  # noqa: E402
-from browser_agent.client import WebSocketClient  # noqa: E402
-from browser_agent.config import Config  # noqa: E402
+from browser import BrowserController  # type: ignore  # noqa: E402
+from client import WebSocketClient  # type: ignore  # noqa: E402
+from config import Config  # type: ignore  # noqa: E402
 
 
 def setup_logging(verbose: bool = False) -> None:

@@ -160,7 +160,8 @@ def start_browser_agent(
     print()
 
     try:
-        result = subprocess.run(cmd)
+        # Run in the script's directory for correct imports
+        result = subprocess.run(cmd, cwd=script_path.parent)
         return result.returncode
     except KeyboardInterrupt:
         print("\n[INFO] Browser Agent stopped by user")

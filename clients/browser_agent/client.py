@@ -15,11 +15,11 @@ from typing import Any
 try:
     import websockets
 except ImportError:
-    print("❌ 請安裝 websockets: pip install websockets")
+    print("Please install websockets: pip install websockets")
     exit(1)
 
-from browser_agent.browser import BrowserController
-from browser_agent.config import Config
+from browser import BrowserController  # type: ignore
+from config import Config  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +247,6 @@ class WebSocketClient:
             text=params["text"],
             clear_first=params.get("clear_first", True),
             press_enter=params.get("press_enter", False),
-            delay=params.get("delay", 0),
             timeout=params.get("timeout", 30000),
         )
 
