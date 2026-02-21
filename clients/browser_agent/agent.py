@@ -47,6 +47,9 @@ def setup_logging(verbose: bool = False) -> None:
         ],
     )
 
+    # 過濾外部套件的 DEBUG 日誌
+    logging.getLogger("websockets").setLevel(logging.WARNING)
+
 
 def parse_args() -> argparse.Namespace:
     """解析命令列參數"""
