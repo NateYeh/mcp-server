@@ -23,6 +23,7 @@ EXTERNAL_LOG = [
     "httpx",
     "httpcore",
     "charset_normalizer",
+    "websockets",
 ]
 
 # 日誌時間格式
