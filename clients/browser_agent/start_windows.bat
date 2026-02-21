@@ -8,30 +8,35 @@ REM   1. 自動啟動 Chrome（開啟 CDP Port 9222）
 REM   2. 啟動 Browser Agent 連接 MCP Server
 REM
 REM 使用方式：
-REM   1. 修改下方的 MCP_SERVER_URL 和 MCP_TOKEN
-REM   2. 執行此腳本
+REM   方式一：設定環境變數後執行
+REM     set MCP_SERVER_URL=ws://192.168.1.100:30787
+REM     set MCP_TOKEN=your-secret-token
+REM     start_windows.bat
+REM
+REM   方式二：直接修改下方預設值後執行
+REM     start_windows.bat
 REM ============================================================================
 
 setlocal enabledelayedexpansion
 
 REM ═══════════════════════════════════════════════════════════════════════════════
-REM 配置區 - 請修改這裡
+REM 配置區 - 優先使用環境變數，若無則使用預設值
 REM ═══════════════════════════════════════════════════════════════════════════════
 
 REM MCP Server WebSocket 位址
-set MCP_SERVER_URL=ws://your-server-ip:30787
+if not defined MCP_SERVER_URL set MCP_SERVER_URL=ws://your-server-ip:30787
 
 REM 認證 Token（與 MCP Server 設定的 REMOTE_BROWSER_TOKEN 相同）
-set MCP_TOKEN=your-secret-token
+if not defined MCP_TOKEN set MCP_TOKEN=your-secret-token
 
 REM Chrome CDP Port（通常不需要修改）
-set CHROME_CDP_PORT=9222
+if not defined CHROME_CDP_PORT set CHROME_CDP_PORT=9222
 
 REM Client ID（可選，用於識別）
-set CLIENT_ID=windows-browser-agent
+if not defined CLIENT_ID set CLIENT_ID=windows-browser-agent
 
 REM Chrome 用戶資料目錄（使用獨立目錄避免衝突）
-set CHROME_USER_DATA=%TEMP%\chrome_remote_debug
+if not defined CHROME_USER_DATA set CHROME_USER_DATA=%TEMP%\chrome_remote_debug
 
 REM ═══════════════════════════════════════════════════════════════════════════════
 REM 自動偵測 Chrome 路徑
