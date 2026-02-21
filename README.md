@@ -14,7 +14,7 @@
 | 系統資訊 | Python 版本查詢 |
 | 套件管理 | pip 安裝 |
 | 檔案操作 | 讀取檔案、寫入檔案、行替換、區塊替換（內容簽名） |
-| 網頁操作 | Playwright CDP、Ollama Web API |
+| 網頁操作 | Playwright CDP、遠端瀏覽器、Ollama Web API |
 | 外部整合 | TMDB、Gmail、圖片辨識 |
 
 ---
@@ -178,6 +178,9 @@ format_tool_result() → MCP JSON Response
 | `TMDB_API_KEY` | - | TMDB API Key |
 | `OLLAMA_API_KEY` | - | Ollama Web API Key |
 | `PLAYWRIGHT_CDP_ENDPOINT` | `http://127.0.0.1:9222` | Playwright CDP 端點 |
+| `REMOTE_BROWSER_ENABLED` | `true` | 啟用遠端瀏覽器功能 |
+| `REMOTE_BROWSER_PORT` | `30787` | 遠端瀏覽器 WebSocket Port |
+| `REMOTE_BROWSER_TOKEN` | `""` | 遠端瀏覽器認證 Token |
 
 ---
 

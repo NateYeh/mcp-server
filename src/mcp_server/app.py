@@ -6,6 +6,7 @@ NATE-MCP-SERVER v4.0.0 (Refactored)
 
 import logging
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # 設定 Python 路徑（專案根目錄）
@@ -17,7 +18,14 @@ from fastapi import FastAPI, HTTPException, Request, status  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
-from mcp_server.config import API_KEYS, MAX_EXECUTION_TIME, MCP_HOST, MCP_PORT, WORK_DIR  # noqa: E402
+from mcp_server.config import (  # noqa: E402
+    API_KEYS,
+    MAX_EXECUTION_TIME,
+    MCP_HOST,
+    MCP_PORT,
+    REMOTE_BROWSER_ENABLED,
+    WORK_DIR,
+)
 from mcp_server.schemas import MCPError  # noqa: E402
 from mcp_server.security import get_allowed_tools, is_tool_allowed, verify_api_key  # noqa: E402
 
@@ -29,13 +37,51 @@ from mcp_server.utils import format_tool_result  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Lifespan 管理 - 啟動/關閉 WebSocket Server
+# ═══════════════════════════════════════════════════════════════════════════════
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI Lifespan 管理器
+
+    啟動時：啟動遠端瀏覽器 WebSocket Server
+    關閉時：停止 WebSocket Server
+    """
+    # 啟動遠端瀏覽器 WebSocket Server
+    if REMOTE_BROWSER_ENABLED:
+        try:
+            from mcp_server.remote.connection_manager import remote_connection_manager
+
+            logger.info("🔗 正在啟動遠端瀏覽器 WebSocket Server...")
+            await remote_connection_manager.start_server()
+        except ImportError:
+            logger.warning("⚠️ 無法導入遠端連線模組，遠端瀏覽器功能已停用")
+        except Exception as e:
+            logger.exception(f"❌ 啟動遠端瀏覽器 WebSocket Server 失敗: {e}")
+
+    yield  # FastAPI 運行中
+
+    # 關閉遠端瀏覽器 WebSocket Server
+    if REMOTE_BROWSER_ENABLED:
+        try:
+            from mcp_server.remote.connection_manager import remote_connection_manager
+
+            logger.info("🛑 正在停止遠端瀏覽器 WebSocket Server...")
+            await remote_connection_manager.stop_server()
+        except Exception as e:
+            logger.exception(f"停止遠端瀏覽器 WebSocket Server 時發生錯誤: {e}")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # FastAPI 應用實例
 # ═══════════════════════════════════════════════════════════════════════════════
 app = FastAPI(
     title="NATE-MCP-SERVER",
     description="MCP Server with Modular Tool Architecture (v4.0.0)",
-    version="4.0.0"
+    version="4.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

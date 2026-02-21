@@ -3,6 +3,10 @@ Web Playwright Tool
 
 透過 Playwright CDP 連接瀏覽器，提供進階網頁自動化操作功能。
 適用於需要複雜互動的場景：登入、表單填寫、點擊、截圖等。
+
+支援兩種模式：
+1. 本地 CDP：直接連接本地 Chrome CDP
+2. 遠端模式：透過 WebSocket 連接遠端 Browser Agent
 """
 
 import asyncio
@@ -16,6 +20,7 @@ from playwright.async_api import Page
 from mcp_server.config import (
     PLAYWRIGHT_CDP_ENDPOINT,
     PLAYWRIGHT_DEFAULT_TIMEOUT,
+    REMOTE_BROWSER_ENABLED,
     WORK_DIR,
 )
 from mcp_server.schemas import ExecutionResult
@@ -40,7 +45,9 @@ class BrowserManager:
     """
     瀏覽器連接管理器
 
-    使用 Singleton 模式，保持與 CDP 瀏覽器的長連接。
+    使用 Singleton 模式，支援兩種連接模式：
+    1. 遠端模式：優先使用遠端 Browser Agent（透過 WebSocket）
+    2. 本地模式：連接本地 CDP 瀏覽器
     """
 
     _instance: Optional["BrowserManager"] = None
@@ -48,6 +55,7 @@ class BrowserManager:
     _browser: Any = None
     _page: Page | None = None
     _lock: asyncio.Lock = asyncio.Lock()
+    _remote_page_proxy: Any = None  # PageProxy 實例
 
     def __new__(cls) -> "BrowserManager":
         if cls._instance is None:
@@ -55,12 +63,34 @@ class BrowserManager:
         return cls._instance
 
     async def _ensure_connected(self) -> None:
-        """確保瀏覽器連接正常，失敗時嘗試備用 Endpoint"""
+        """
+        確保瀏覽器連接正常
+
+        優先順序：
+        1. 檢查遠端連線是否可用
+        2. 若無遠端連線，使用本地 CDP
+        """
         async with self._lock:
+            # 檢查遠端連線
+            if REMOTE_BROWSER_ENABLED:
+                try:
+                    from mcp_server.remote.connection_manager import remote_connection_manager
+
+                    if remote_connection_manager.is_connected:
+                        # 延遲導入 PageProxy
+                        from mcp_server.remote.page_proxy import PageProxy
+
+                        self._remote_page_proxy = PageProxy()
+                        logger.info("✅ 使用遠端瀏覽器連線")
+                        return
+                except ImportError as e:
+                    logger.warning(f"無法導入遠端連線模組: {e}")
+
+            # 使用本地 CDP
             if self._browser is not None and self._browser.is_connected():
                 return
 
-            logger.info("正在連接到 CDP 瀏覽器...")
+            logger.info("正在連接到本地 CDP 瀏覽器...")
             from playwright.async_api import async_playwright
 
             self._playwright = await async_playwright().start()
@@ -103,20 +133,58 @@ class BrowserManager:
                 logger.info("建立新 Page")
 
     async def get_page(self) -> Page:
-        """取得當前 Page"""
+        """
+        取得當前 Page
+
+        Returns:
+            Page 物件（本地 CDP 或遠端 PageProxy）
+        """
         await self._ensure_connected()
+
+        # 優先返回遠端 PageProxy
+        if self._remote_page_proxy is not None:
+            return self._remote_page_proxy
+
         if self._page is None:
             raise RuntimeError("無法取得 Page")
         return self._page
 
     async def disconnect(self) -> None:
         """中斷連接（但不關閉外部瀏覽器）"""
+        self._remote_page_proxy = None
+
         if self._playwright:
             await self._playwright.stop()
             self._playwright = None
             self._browser = None
             self._page = None
             logger.info("已中斷瀏覽器連接")
+
+    @property
+    def is_remote(self) -> bool:
+        """是否使用遠端連線"""
+        return self._remote_page_proxy is not None
+
+    @property
+    def connection_info(self) -> dict[str, Any]:
+        """取得連線資訊"""
+        if self._remote_page_proxy is not None:
+            try:
+                from mcp_server.remote.connection_manager import remote_connection_manager
+
+                return {
+                    "mode": "remote",
+                    "connected": remote_connection_manager.is_connected,
+                    **remote_connection_manager.connection_info,
+                }
+            except ImportError:
+                return {"mode": "remote", "connected": False}
+
+        return {
+            "mode": "local",
+            "connected": self._browser is not None and self._browser.is_connected(),
+            "cdp_endpoint": CDP_ENDPOINT,
+        }
 
 
 # 全域管理器實例
@@ -682,7 +750,12 @@ async def handle_web_get_url(args: dict[str, Any]) -> ExecutionResult:
     """處理 web_get_url 請求"""
     try:
         page = await browser_manager.get_page()
-        url = page.url
+
+        # 支援遠端模式的 PageProxy
+        if browser_manager.is_remote:
+            url = await page.get_url()
+        else:
+            url = page.url
 
         return ExecutionResult(success=True, stdout=f"當前 URL: {url}", metadata={"url": url})
     except Exception as e:
@@ -714,25 +787,52 @@ async def handle_web_get_status(args: dict[str, Any]) -> ExecutionResult:
     """處理 web_get_status 請求"""
     try:
         page = await browser_manager.get_page()
-        url = page.url
-        title = await page.title()
-        viewport = page.viewport_size
+        conn_info = browser_manager.connection_info
+        is_remote = browser_manager.is_remote
 
+        # 支援遠端模式
+        if is_remote:
+            url = await page.get_url()
+            title = await page.title()
+            viewport = await page.get_viewport_size()
+        else:
+            url = page.url
+            title = await page.title()
+            viewport = page.viewport_size
+
+        # 構建狀態輸出
         stdout_parts = [
             "📊 瀏覽器狀態",
-            f"CDP Endpoint: {CDP_ENDPOINT}",
+            f"連線模式: {'遠端 (Remote)' if is_remote else '本地 (Local CDP)'}",
+        ]
+
+        if is_remote:
+            stdout_parts.append(f"Client ID: {conn_info.get('client_id', 'unknown')}")
+            stdout_parts.append(f"連線時間: {conn_info.get('connected_at', 'unknown')}")
+        else:
+            stdout_parts.append(f"CDP Endpoint: {CDP_ENDPOINT}")
+
+        stdout_parts.extend([
             "連接狀態: ✅ 已連接",
             f"當前 URL: {url}",
             f"頁面標題: {title}",
-        ]
+        ])
+
         if viewport:
             stdout_parts.append(f"Viewport: {viewport['width']}x{viewport['height']}")
         else:
             stdout_parts.append("Viewport: Unknown")
 
-        return ExecutionResult(
-            success=True, stdout="\n".join(stdout_parts), metadata={"connected": True, "cdp_endpoint": CDP_ENDPOINT, "url": url, "title": title, "viewport": viewport}
-        )
+        metadata = {
+            "connected": True,
+            "mode": "remote" if is_remote else "local",
+            **conn_info,
+            "url": url,
+            "title": title,
+            "viewport": viewport,
+        }
+
+        return ExecutionResult(success=True, stdout="\n".join(stdout_parts), metadata=metadata)
     except Exception as e:
         logger.exception(f"取得狀態失敗: {e}")
         return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e), metadata={"connected": False, "cdp_endpoint": CDP_ENDPOINT})

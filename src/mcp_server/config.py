@@ -248,6 +248,18 @@ if PLAYWRIGHT_CDP_ENDPOINT:
     logger.info(f"🌐 Playwright CDP Endpoint: {PLAYWRIGHT_CDP_ENDPOINT}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 遠端瀏覽器設定（WebSocket 反向連線）
+# ═══════════════════════════════════════════════════════════════════════════════
+REMOTE_BROWSER_ENABLED = os.getenv("REMOTE_BROWSER_ENABLED", "true").lower() == "true"
+REMOTE_BROWSER_PORT = int(os.getenv("REMOTE_BROWSER_PORT", "30787"))
+REMOTE_BROWSER_TOKEN = os.getenv("REMOTE_BROWSER_TOKEN", "")  # 認證 Token
+
+if REMOTE_BROWSER_ENABLED:
+    logger.info(f"🔗 遠端瀏覽器功能已啟用，WebSocket Port: {REMOTE_BROWSER_PORT}")
+    if not REMOTE_BROWSER_TOKEN:
+        logger.warning("⚠️ 未設定 REMOTE_BROWSER_TOKEN，建議設定以提高安全性")
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Ollama Web API 設定
 # ═══════════════════════════════════════════════════════════════════════════════
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
