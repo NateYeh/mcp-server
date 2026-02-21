@@ -191,6 +191,34 @@ def main() -> int:
     print("=" * 60)
     print()
 
+    # Validate required environment variables
+    missing_vars = []
+    if not MCP_SERVER_URL:
+        missing_vars.append("MCP_SERVER_URL")
+    if not MCP_TOKEN:
+        missing_vars.append("MCP_TOKEN")
+
+    if missing_vars:
+        print("[ERROR] 缺少必要環境變數！")
+        print()
+        for var in missing_vars:
+            print(f"  {var}: ❌ 未設定")
+        print()
+        print("請透過以下方式設定：")
+        print()
+        print("  方法 1: 設定 .env 檔案")
+        print("    1. 複製 .env.example 到 .env")
+        print("    2. 編輯 .env 並設定 MCP_SERVER_URL 和 MCP_TOKEN")
+        print("    3. 重新執行腳本")
+        print()
+        print("  方法 2: 設定環境變數")
+        print("    set MCP_SERVER_URL=ws://192.168.1.100:30787")
+        print("    set MCP_TOKEN=your-secret-token")
+        print("    python start_windows.py")
+        print()
+        input("Press Enter to exit...")
+        return 1
+
     # Find Chrome
     chrome_path = find_chrome()
     if not chrome_path:
