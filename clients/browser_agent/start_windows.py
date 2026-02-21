@@ -7,12 +7,14 @@ Features:
   2. Start Browser Agent to connect MCP Server
 
 Usage:
-  Method 1: Set environment variables then run
+  Method 1: Use .env file (recommended)
+    1. Copy .env.example to .env
+    2. Edit .env with your settings
+    3. Run: python start_windows.py
+
+  Method 2: Set environment variables then run
     set MCP_SERVER_URL=ws://192.168.1.100:30787
     set MCP_TOKEN=your-secret-token
-    python start_windows.py
-
-  Method 2: Modify default values below then run
     python start_windows.py
 """
 
@@ -25,6 +27,16 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+# Auto-load .env file
+_ENV_PATH = Path(__file__).parent / ".env"
+if _ENV_PATH.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_ENV_PATH)
+        print(f"📁 已載入設定檔: {_ENV_PATH}")
+    except ImportError:
+        print("⚠️ 未安裝 python-dotenv，請執行: pip install python-dotenv")
 
 # ============================================================================
 # Configuration - Use environment variables first, fallback to defaults

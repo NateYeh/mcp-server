@@ -6,6 +6,13 @@ Browser Agent 配置
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+# 自動載入 .env 檔案
+_ENV_PATH = Path(__file__).parent / ".env"
+if _ENV_PATH.exists():
+    from dotenv import load_dotenv
+    load_dotenv(_ENV_PATH)
 
 
 @dataclass
@@ -39,7 +46,10 @@ class Config:
         return cls(
             server_url=os.getenv("MCP_SERVER_URL", "ws://localhost:30787"),
             token=os.getenv("MCP_TOKEN", ""),
-            cdp_endpoint=os.getenv("CHROME_CDP_ENDPOINT", "http://localhost:9222"),
+            cdp_endpoint=os.getenv(
+                "CHROME_CDP_ENDPOINT",
+                f"http://localhost:{os.getenv('CHROME_CDP_PORT', '9222')}",
+            ),
             client_id=os.getenv("CLIENT_ID", "browser-agent"),
             reconnect_interval=float(os.getenv("RECONNECT_INTERVAL", "5.0")),
             heartbeat_interval=float(os.getenv("HEARTBEAT_INTERVAL", "30.0")),

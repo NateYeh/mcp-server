@@ -83,24 +83,36 @@ REMOTE_BROWSER_PORT=30787
 REMOTE_BROWSER_TOKEN=your-secret-token
 ```
 
-### 4. 啟動 Browser Agent
+### 4. 設定 Browser Agent（推薦使用 .env 檔案）
 
-**使用環境變數：**
+複製範例設定檔並編輯：
+
 ```bash
-export MCP_SERVER_URL=ws://your-server-ip:30787
-export MCP_TOKEN=your-secret-token
+cd clients/browser_agent
+cp .env.example .env
+# 編輯 .env 檔案，填入 MCP_SERVER_URL 和 MCP_TOKEN
+```
+
+`.env` 檔案內容：
+```env
+MCP_SERVER_URL=ws://192.168.77.140:30787
+MCP_TOKEN=your-secret-token-here
+CHROME_CDP_PORT=9222
+CLIENT_ID=browser-agent
+```
+
+### 5. 啟動 Browser Agent
+
+**使用 .env 檔案（推薦）：**
+```bash
 python agent.py
+# 或 Windows 啟動腳本（會自動啟動 Chrome）
+python start_windows.py
 ```
 
 **使用命令列參數：**
 ```bash
 python agent.py --server ws://your-server-ip:30787 --token your-secret-token
-```
-
-**Windows 批次檔：**
-```cmd
-REM 編輯 start_windows.bat，設定 MCP_SERVER_URL 和 MCP_TOKEN
-start_windows.bat
 ```
 
 ## 環境變數
