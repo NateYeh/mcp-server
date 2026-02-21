@@ -62,6 +62,24 @@ class WebSocketClient:
             "element_scroll_into_view": self._handle_element_scroll_into_view,
         }
 
+    def _is_connected(self) -> bool:
+        """
+        檢查 WebSocket 連線狀態（兼容 websockets 新舊版本）
+
+        Returns:
+            是否已連接
+        """
+        if not self._websocket:
+            return False
+
+        # websockets >= 11.0 使用 state 屬性
+        if hasattr(self._websocket, 'state'):
+            from websockets.protocol import State
+            return self._websocket.state == State.OPEN
+
+        # websockets < 11.0 使用 closed 屬性
+        return not getattr(self._websocket, 'closed', True)
+
     async def connect(self) -> bool:
         """
         連接到 MCP Server 並進行認證
@@ -119,7 +137,7 @@ class WebSocketClient:
         while self._running:
             try:
                 # 檢查連線狀態，必要時重新連接
-                if (not self._websocket or self._websocket.closed) and not await self._reconnect():
+                if not self._is_connected() and not await self._reconnect():
                     await asyncio.sleep(self._config.reconnect_interval)
                     continue
 
@@ -370,6 +388,9 @@ class WebSocketClient:
         """停止客戶端"""
         self._running = False
         if self._websocket:
-            await self._websocket.close()
+            try:
+                await self._websocket.close()
+            except Exception:
+                pass  # 忽略關閉時的錯誤
         await self._browser.disconnect()
         logger.info("🛑 Browser Agent 已停止")

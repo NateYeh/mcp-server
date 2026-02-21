@@ -30,8 +30,8 @@ from pathlib import Path
 # Configuration - Use environment variables first, fallback to defaults
 # ============================================================================
 
-MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "ws://your-server-ip:30787")
-MCP_TOKEN = os.environ.get("MCP_TOKEN", "your-secret-token")
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "")
+MCP_TOKEN = os.environ.get("MCP_TOKEN", "")
 CHROME_CDP_PORT = int(os.environ.get("CHROME_CDP_PORT", "9222"))
 CLIENT_ID = os.environ.get("CLIENT_ID", "windows-browser-agent")
 CHROME_USER_DATA = os.environ.get(
