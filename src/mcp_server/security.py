@@ -3,6 +3,7 @@
 
 處理 API Key 驗證與安全相關功能，支援多 Key 權限管理
 """
+import fnmatch
 import logging
 from typing import Any
 
@@ -93,6 +94,12 @@ def is_tool_allowed(request: Request, tool_name: str) -> bool:
     """
     檢查指定的 tool 是否被允許執行
 
+    支援 wildcard 模式匹配：
+    - ["*"] 表示所有 tools 都允許
+    - ["web_*"] 表示所有 web_ 開頭的 tools 都允許
+    - ["execute_*"] 表示所有 execute_ 開頭的 tools 都允許
+    - 可混合使用 wildcard 和精確名稱
+
     Args:
         request: FastAPI Request 物件
         tool_name: Tool 名稱
@@ -106,7 +113,8 @@ def is_tool_allowed(request: Request, tool_name: str) -> bool:
     if "*" in allowed_tools:
         return True
 
-    return tool_name in allowed_tools
+    # 支援 wildcard 模式匹配，例如 "web_*" 會匹配 "web_search", "web_fetch" 等
+    return any(fnmatch.fnmatch(tool_name, pattern) for pattern in allowed_tools)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -128,9 +128,19 @@ async def handle_my_tool(args: dict) -> ExecutionResult:
 ```python
 API_KEYS = {
     "sk-xxx": {"tools": ["*"]},           # 全部權限
-    "sk-yyy": {"tools": ["execute_python", "replace_block"]}  # 僅特定
+    "sk-yyy": {"tools": ["execute_python", "replace_block"]},  # 僅特定 tools
+    "sk-zzz": {"tools": ["web_*"]},       # wildcard: 所有 web_ 開頭的 tools
+    "sk-aaa": {"tools": ["web_*", "read_file", "write_file"]}  # 混合使用
 }
 ```
+
+**Wildcard 模式支援**:
+| 設定 | 效果 |
+|------|------|
+| `["*"]` | 開放所有 tools |
+| `["web_*"]` | 開放所有 `web_` 開頭的 tools (web_search, web_fetch, web_navigate 等) |
+| `["execute_*"]` | 開放所有 `execute_` 開頭的 tools |
+| `["gmail_*"]` | 開放所有 `gmail_` 開頭的 tools |
 
 ### 5.2 危險指令攔截
 
