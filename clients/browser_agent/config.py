@@ -20,7 +20,7 @@ class Config:
     """Browser Agent 配置"""
 
     # MCP Server WebSocket 位址
-    server_url: str = "ws://localhost:30787"
+    server_url: str = "ws://localhost:8001"
 
     # 認證 Token
     token: str = ""
@@ -44,7 +44,7 @@ class Config:
     def from_env(cls) -> "Config":
         """從環境變數載入配置"""
         return cls(
-            server_url=os.getenv("MCP_SERVER_URL", "ws://localhost:30787"),
+            server_url=os.getenv("MCP_SERVER_URL", "ws://localhost:8001"),
             token=os.getenv("MCP_TOKEN", ""),
             cdp_endpoint=os.getenv(
                 "CHROME_CDP_ENDPOINT",

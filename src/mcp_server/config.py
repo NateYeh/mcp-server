@@ -134,7 +134,7 @@ def cleanup_work_directory() -> None:
 # 伺服器設定
 # ═══════════════════════════════════════════════════════════════════════════════
 MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
-MCP_PORT = int(os.getenv("MCP_PORT", "30786"))
+MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 執行限制
@@ -253,7 +253,7 @@ if PLAYWRIGHT_CDP_ENDPOINT:
 # 遠端瀏覽器設定（WebSocket 反向連線）
 # ═══════════════════════════════════════════════════════════════════════════════
 REMOTE_BROWSER_ENABLED = os.getenv("REMOTE_BROWSER_ENABLED", "true").lower() == "true"
-REMOTE_BROWSER_PORT = int(os.getenv("REMOTE_BROWSER_PORT", "30787"))
+REMOTE_BROWSER_PORT = int(os.getenv("REMOTE_BROWSER_PORT", "8001"))
 REMOTE_BROWSER_TOKEN = os.getenv("REMOTE_BROWSER_TOKEN", "")  # 認證 Token
 
 if REMOTE_BROWSER_ENABLED:

@@ -5,7 +5,7 @@ Browser Agent 主程式
 連接 MCP Server，操作本地 Chrome 瀏覽器。
 
 使用方式：
-    python agent.py --server ws://your-server:30787 --token your-token
+    python agent.py --server ws://your-server:8001 --token your-token
 
 環境變數：
     MCP_SERVER_URL      - MCP Server WebSocket 位址
@@ -62,10 +62,10 @@ def parse_args() -> argparse.Namespace:
   python agent.py
 
   # 指定 Server 和 Token
-  python agent.py --server ws://192.168.1.100:30787 --token your-secret-token
+  python agent.py --server ws://192.168.1.100:8001 --token your-secret-token
 
   # 使用環境變數
-  export MCP_SERVER_URL=ws://192.168.1.100:30787
+  export MCP_SERVER_URL=ws://192.168.1.100:8001
   export MCP_TOKEN=your-secret-token
   python agent.py
 
@@ -89,7 +89,7 @@ Chrome 啟動 (Linux)：
     parser.add_argument(
         "--server",
         type=str,
-        help="MCP Server WebSocket 位址 (預設: ws://localhost:30787)",
+        help="MCP Server WebSocket 位址 (預設: ws://localhost:8001)",
     )
     parser.add_argument(
         "--token",

@@ -16,6 +16,7 @@ from mcp_server.config import (
     GEMINI_PROXY_URL,
     MAX_EXECUTION_TIME,
     OLLAMA_PROXY_URL,
+    MCP_PORT,
     WORK_DIR,
     cleanup_work_directory,
 )
@@ -57,7 +58,7 @@ def main():
         logger.warning("⚠️ API Key 認證: 已停用（開發模式）")
 
     # 啟動伺服器
-    uvicorn.run(app, host="0.0.0.0", port=30786)
+    uvicorn.run(app, host="0.0.0.0", port=MCP_PORT)
 
 
 if __name__ == "__main__":

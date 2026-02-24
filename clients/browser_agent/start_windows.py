@@ -13,7 +13,7 @@ Usage:
     3. Run: python start_windows.py
 
   Method 2: Set environment variables then run
-    set MCP_SERVER_URL=ws://192.168.1.100:30787
+    set MCP_SERVER_URL=ws://192.168.1.100:8001
     set MCP_TOKEN=your-secret-token
     python start_windows.py
 """
@@ -212,7 +212,7 @@ def main() -> int:
         print("    3. 重新執行腳本")
         print()
         print("  方法 2: 設定環境變數")
-        print("    set MCP_SERVER_URL=ws://192.168.1.100:30787")
+        print("    set MCP_SERVER_URL=ws://192.168.1.100:8001")
         print("    set MCP_TOKEN=your-secret-token")
         print("    python start_windows.py")
         print()

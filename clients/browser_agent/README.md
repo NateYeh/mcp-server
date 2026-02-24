@@ -15,7 +15,7 @@
 │                         Docker 容器 (MCP)                        │
 │  ┌─────────────────┐         ┌────────────────────────────┐    │
 │  │  web_playwright │ ◄────── │  Remote Connection Manager │    │
-│  │     (Tools)     │         │  (WebSocket Server: 30787) │    │
+│  │     (Tools)     │         │  (WebSocket Server: 8001) │    │
 │  └─────────────────┘         └────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                         ▲
@@ -79,7 +79,7 @@ google-chrome \
 ```env
 # 遠端瀏覽器設定
 REMOTE_BROWSER_ENABLED=true
-REMOTE_BROWSER_PORT=30787
+REMOTE_BROWSER_PORT=8001
 REMOTE_BROWSER_TOKEN=your-secret-token
 ```
 
@@ -95,7 +95,7 @@ cp .env.example .env
 
 `.env` 檔案內容：
 ```env
-MCP_SERVER_URL=ws://your-mcp-server-ip:30787
+MCP_SERVER_URL=ws://your-mcp-server-ip:8001
 MCP_TOKEN=your-secret-token-here
 CHROME_CDP_PORT=9222
 CLIENT_ID=browser-agent
@@ -112,14 +112,14 @@ python start_windows.py
 
 **使用命令列參數：**
 ```bash
-python agent.py --server ws://your-server-ip:30787 --token your-secret-token
+python agent.py --server ws://your-server-ip:8001 --token your-secret-token
 ```
 
 ## 環境變數
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `MCP_SERVER_URL` | `ws://localhost:30787` | MCP Server WebSocket 位址 |
+| `MCP_SERVER_URL` | `ws://localhost:8001` | MCP Server WebSocket 位址 |
 | `MCP_TOKEN` | `""` | 認證 Token |
 | `CHROME_CDP_ENDPOINT` | `http://localhost:9222` | Chrome CDP Endpoint |
 | `CLIENT_ID` | `browser-agent` | Client ID（用於識別） |
@@ -159,7 +159,7 @@ curl http://localhost:9222/json/version
 ### 無法連接到 MCP Server
 
 1. 確認 MCP Server 已啟動遠端瀏覽器功能
-2. 確認防火牆允許出站連接到 30787 Port
+2. 確認防火牆允許出站連接到 8001 Port
 3. 確認 Token 正確
 
 ### 認證失敗
