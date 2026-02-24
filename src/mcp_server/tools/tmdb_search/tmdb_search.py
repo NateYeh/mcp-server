@@ -3,6 +3,7 @@ TMDB 搜尋 Tool
 
 搜尋 TMDB 資料庫中的電影或電視劇資訊
 """
+
 from __future__ import annotations
 
 import asyncio

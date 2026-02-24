@@ -64,7 +64,9 @@ class RemoteConnectionManager:
             return
 
         try:
-            from websockets.server import serve
+            import websockets
+
+            serve = websockets.serve
 
             async def handler(websocket: Any) -> None:
                 """處理 WebSocket 連線"""

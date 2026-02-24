@@ -3,6 +3,7 @@ read_file Tool
 
 讀取指定檔案的內容，支援行範圍選擇、行號顯示等功能。
 """
+
 import logging
 import mimetypes
 from datetime import datetime
@@ -20,51 +21,22 @@ logger = logging.getLogger(__name__)
 # Tool 註冊
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @registry.register(
     name="read_file",
-    description=(
-        "讀取指定檔案的內容。"
-        "支援行範圍選擇（start_line, end_line）、行號顯示等功能。"
-        "適用於查看程式碼、設定檔、日誌等文字檔案。"
-    ),
+    description=("讀取指定檔案的內容。支援行範圍選擇（start_line, end_line）、行號顯示等功能。適用於查看程式碼、設定檔、日誌等文字檔案。"),
     input_schema={
         "type": "object",
         "properties": {
-            "file_path": {
-                "type": "string",
-                "description": "要讀取的檔案路徑（絕對路徑）"
-            },
-            "start_line": {
-                "type": "integer",
-                "description": "起始行號（1-based），預設 1",
-                "minimum": 1,
-                "default": 1
-            },
-            "end_line": {
-                "type": "integer",
-                "description": "結束行號（1-based），-1 表示到檔案末尾，預設 -1",
-                "default": -1
-            },
-            "show_line_numbers": {
-                "type": "boolean",
-                "description": "是否顯示行號，預設 true",
-                "default": True
-            },
-            "max_lines": {
-                "type": "integer",
-                "description": "最大讀取行數限制，預設 2000",
-                "minimum": 1,
-                "maximum": 10000,
-                "default": 2000
-            },
-            "encoding": {
-                "type": "string",
-                "description": "檔案編碼，預設 utf-8",
-                "default": "utf-8"
-            }
+            "file_path": {"type": "string", "description": "要讀取的檔案路徑（絕對路徑）"},
+            "start_line": {"type": "integer", "description": "起始行號（1-based），預設 1", "minimum": 1, "default": 1},
+            "end_line": {"type": "integer", "description": "結束行號（1-based），-1 表示到檔案末尾，預設 -1", "default": -1},
+            "show_line_numbers": {"type": "boolean", "description": "是否顯示行號，預設 true", "default": True},
+            "max_lines": {"type": "integer", "description": "最大讀取行數限制，預設 2000", "minimum": 1, "maximum": 10000, "default": 2000},
+            "encoding": {"type": "string", "description": "檔案編碼，預設 utf-8", "default": "utf-8"},
         },
-        "required": ["file_path"]
-    }
+        "required": ["file_path"],
+    },
 )
 async def handle_read_file(args: dict[str, Any]) -> ExecutionResult:
     """處理 read_file 請求"""
@@ -92,28 +64,15 @@ async def handle_read_file(args: dict[str, Any]) -> ExecutionResult:
     if not isinstance(encoding, str) or not encoding:
         encoding = "utf-8"
 
-    return await read_file(
-        file_path=file_path,
-        start_line=start_line,
-        end_line=end_line,
-        show_line_numbers=show_line_numbers,
-        max_lines=max_lines,
-        encoding=encoding
-    )
+    return await read_file(file_path=file_path, start_line=start_line, end_line=end_line, show_line_numbers=show_line_numbers, max_lines=max_lines, encoding=encoding)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 核心邏輯
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def read_file(
-    file_path: str,
-    start_line: int = 1,
-    end_line: int = -1,
-    show_line_numbers: bool = True,
-    max_lines: int = 2000,
-    encoding: str = "utf-8"
-) -> ExecutionResult:
+
+async def read_file(file_path: str, start_line: int = 1, end_line: int = -1, show_line_numbers: bool = True, max_lines: int = 2000, encoding: str = "utf-8") -> ExecutionResult:
     """
     執行檔案讀取
 
@@ -168,11 +127,7 @@ async def read_file(
                     stderr=f"UnicodeDecodeError: {e}",
                     returncode=-1,
                     execution_time=_get_elapsed_time(start_time),
-                    metadata={
-                        "file_path": str(target_path),
-                        "file_size": file_size,
-                        "mime_type": mime_type
-                    }
+                    metadata={"file_path": str(target_path), "file_size": file_size, "mime_type": mime_type},
                 )
 
         lines = content.splitlines()
@@ -184,13 +139,7 @@ async def read_file(
                 stdout=f"📁 檔案: {target_path}\n📏 檔案大小: {file_size} bytes\n📋 檔案為空",
                 returncode=0,
                 execution_time=_get_elapsed_time(start_time),
-                metadata={
-                    "file_path": str(target_path),
-                    "file_size": file_size,
-                    "total_lines": 0,
-                    "encoding": encoding,
-                    "mime_type": mime_type
-                }
+                metadata={"file_path": str(target_path), "file_size": file_size, "total_lines": 0, "encoding": encoding, "mime_type": mime_type},
             )
 
         total_lines = len(lines)
@@ -207,11 +156,7 @@ async def read_file(
                 error_message=f"起始行號 {actual_start} 超過檔案總行數 {total_lines}",
                 returncode=-1,
                 execution_time=_get_elapsed_time(start_time),
-                metadata={
-                    "file_path": str(target_path),
-                    "file_size": file_size,
-                    "total_lines": total_lines
-                }
+                metadata={"file_path": str(target_path), "file_size": file_size, "total_lines": total_lines},
             )
 
         # 應用 max_lines 限制
@@ -222,15 +167,12 @@ async def read_file(
             truncated = False
 
         # 擷取目標行
-        target_lines = lines[actual_start - 1:actual_end]
+        target_lines = lines[actual_start - 1 : actual_end]
 
         # 格式化輸出
         if show_line_numbers:
             line_number_width = len(str(actual_end))
-            formatted_lines = [
-                f"{actual_start + i:>{line_number_width}}: {line}"
-                for i, line in enumerate(target_lines)
-            ]
+            formatted_lines = [f"{actual_start + i:>{line_number_width}}: {line}" for i, line in enumerate(target_lines)]
         else:
             formatted_lines = target_lines
 
@@ -245,11 +187,7 @@ async def read_file(
             output_truncated = False
 
         # 構建輸出訊息
-        header_parts = [
-            f"📁 檔案: {target_path}",
-            f"📏 檔案大小: {_format_size(file_size)}",
-            f"📋 總行數: {total_lines} | 讀取範圍: {actual_start}-{actual_end}"
-        ]
+        header_parts = [f"📁 檔案: {target_path}", f"📏 檔案大小: {_format_size(file_size)}", f"📋 總行數: {total_lines} | 讀取範圍: {actual_start}-{actual_end}"]
 
         if encoding != "utf-8":
             header_parts.append(f"🔢 編碼: {encoding}")
@@ -285,20 +223,13 @@ async def read_file(
                 "encoding": encoding,
                 "mime_type": mime_type,
                 "truncated": truncated or output_truncated,
-                "show_line_numbers": show_line_numbers
-            }
+                "show_line_numbers": show_line_numbers,
+            },
         )
 
     except FileNotFoundError as e:
         logger.exception(f"檔案不存在: {e}")
-        return ExecutionResult(
-            success=False,
-            error_type="FileNotFoundError",
-            error_message=str(e),
-            stderr=str(e),
-            returncode=-1,
-            execution_time=_get_elapsed_time(start_time)
-        )
+        return ExecutionResult(success=False, error_type="FileNotFoundError", error_message=str(e), stderr=str(e), returncode=-1, execution_time=_get_elapsed_time(start_time))
     except PermissionError as e:
         logger.exception(f"權限不足: {e}")
         return ExecutionResult(
@@ -307,23 +238,17 @@ async def read_file(
             error_message=f"權限不足，無法讀取檔案: {file_path}",
             stderr=str(e),
             returncode=-1,
-            execution_time=_get_elapsed_time(start_time)
+            execution_time=_get_elapsed_time(start_time),
         )
     except Exception as e:
         logger.exception(f"read_file 發生錯誤: {e}")
-        return ExecutionResult(
-            success=False,
-            error_type=type(e).__name__,
-            error_message=str(e),
-            stderr=str(e),
-            returncode=-1,
-            execution_time=_get_elapsed_time(start_time)
-        )
+        return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e), stderr=str(e), returncode=-1, execution_time=_get_elapsed_time(start_time))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 輔助函數
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _resolve_path(file_path: str) -> Path:
     """解析檔案路徑（只接受絕對路徑）"""

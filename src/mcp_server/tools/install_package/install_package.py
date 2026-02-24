@@ -3,6 +3,7 @@ install_package Tool
 
 安裝 Python 套件（使用 pip）
 """
+
 import asyncio
 import logging
 import sys
@@ -22,20 +23,11 @@ logger = logging.getLogger(__name__)
     input_schema={
         "type": "object",
         "properties": {
-            "package": {
-                "type": "string",
-                "description": "套件名稱與版本規格，例如 'numpy', 'pandas==2.0.0', 'git+https://github.com/...'"
-            },
-            "timeout": {
-                "type": "integer",
-                "default": MAX_EXECUTION_TIME,
-                "minimum": 1,
-                "maximum": MAX_EXECUTION_TIME,
-                "description": "安裝超時時間（秒）"
-            }
+            "package": {"type": "string", "description": "套件名稱與版本規格，例如 'numpy', 'pandas==2.0.0', 'git+https://github.com/...'"},
+            "timeout": {"type": "integer", "default": MAX_EXECUTION_TIME, "minimum": 1, "maximum": MAX_EXECUTION_TIME, "description": "安裝超時時間（秒）"},
         },
-        "required": ["package"]
-    }
+        "required": ["package"],
+    },
 )
 async def handle_install_package(args: dict[str, Any]) -> ExecutionResult:
     """處理 install_package 請求"""
@@ -51,19 +43,14 @@ async def handle_install_package(args: dict[str, Any]) -> ExecutionResult:
         if result.stderr:
             result.stdout += f"\n\n⚠️ Warnings:\n{result.stderr}"
         result.stderr = ""
-        result.stdout += (
-            "\n\n💡 提醒：請將此套件新增至 /mnt/work/py_works/project/requirements.txt "
-            "以確保專案依賴一致性。"
-        )
+        result.stdout += "\n\n💡 提醒：請將此套件新增至 /mnt/work/py_works/project/requirements.txt 以確保專案依賴一致性。"
     else:
         result.error_message = f"❌ Failed to install '{package_spec}': {result.error_message}"
 
     return result
 
-async def install_package(
-    package_spec: str,
-    timeout: int = MAX_EXECUTION_TIME
-) -> ExecutionResult:
+
+async def install_package(package_spec: str, timeout: int = MAX_EXECUTION_TIME) -> ExecutionResult:
     """
     安裝 Python 套件。
 
@@ -79,48 +66,27 @@ async def install_package(
     # 安全性檢查
     if any(char in package_spec for char in DANGEROUS_PACKAGE_CHARS):
         return ExecutionResult(
-            success=False,
-            error_type="ValueError",
-            error_message="Package specification contains invalid characters",
-            stderr="Invalid characters in package name"
+            success=False, error_type="ValueError", error_message="Package specification contains invalid characters", stderr="Invalid characters in package name"
         )
 
     if len(package_spec) > 200:
-        return ExecutionResult(
-            success=False,
-            error_type="ValueError",
-            error_message="Package specification too long (max 200 characters)",
-            stderr="Package name too long"
-        )
+        return ExecutionResult(success=False, error_type="ValueError", error_message="Package specification too long (max 200 characters)", stderr="Package name too long")
 
     try:
-        cmd = [
-            sys.executable, "-m", "pip", "install",
-            "--no-cache-dir", package_spec
-        ]
+        cmd = [sys.executable, "-m", "pip", "install", "--no-cache-dir", package_spec]
 
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()
             logger.warning(f"套件安裝超時 ({timeout}s)")
-            return ExecutionResult(
-                success=False,
-                error_type="TimeoutError",
-                stderr=f"Installation timeout after {timeout}s"
-            )
+            return ExecutionResult(success=False, error_type="TimeoutError", stderr=f"Installation timeout after {timeout}s")
 
-        stdout_text = stdout_bytes.decode('utf-8', errors='replace')
-        stderr_text = stderr_bytes.decode('utf-8', errors='replace')
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+        stderr_text = stderr_bytes.decode("utf-8", errors="replace")
 
         # 截斷過長輸出
         if len(stdout_text) > MAX_OUTPUT_LENGTH:
@@ -128,19 +94,8 @@ async def install_package(
         if len(stderr_text) > MAX_OUTPUT_LENGTH:
             stderr_text = stderr_text[:MAX_OUTPUT_LENGTH] + "... [truncated]"
 
-        return ExecutionResult(
-            success=proc.returncode == 0,
-            stdout=stdout_text,
-            stderr=stderr_text,
-            returncode=proc.returncode or 0,
-            metadata={"package": package_spec}
-        )
+        return ExecutionResult(success=proc.returncode == 0, stdout=stdout_text, stderr=stderr_text, returncode=proc.returncode or 0, metadata={"package": package_spec})
 
     except Exception as e:
         logger.exception(f"安裝套件失敗: {e}")
-        return ExecutionResult(
-            success=False,
-            error_type=type(e).__name__,
-            error_message=str(e),
-            stderr=traceback.format_exc()
-        )
+        return ExecutionResult(success=False, error_type=type(e).__name__, error_message=str(e), stderr=traceback.format_exc())

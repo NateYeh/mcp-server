@@ -52,10 +52,10 @@ def _get_color_formatter_func(fg: int | None = None, bg: int | None = None):
 
 # 不同日誌等級的顏色映射
 _LEVEL_COLORS = {
-    logging.DEBUG: _get_color_formatter_func(fg=7),    # 白色
-    logging.INFO: _get_color_formatter_func(fg=2),    # 綠色
-    logging.WARNING: _get_color_formatter_func(fg=3),   # 黃色
-    logging.ERROR: _get_color_formatter_func(fg=1),     # 紅色
+    logging.DEBUG: _get_color_formatter_func(fg=7),  # 白色
+    logging.INFO: _get_color_formatter_func(fg=2),  # 綠色
+    logging.WARNING: _get_color_formatter_func(fg=3),  # 黃色
+    logging.ERROR: _get_color_formatter_func(fg=1),  # 紅色
     logging.CRITICAL: _get_color_formatter_func(fg=6, bg=1),
 }
 

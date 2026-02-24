@@ -3,6 +3,7 @@
 
 包含 ExecutionResult、MCPError 等核心資料結構
 """
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,6 +11,7 @@ from typing import Any
 @dataclass
 class ExecutionResult:
     """統一的執行結果格式"""
+
     success: bool
     stdout: str = ""
     stderr: str = ""
@@ -38,12 +40,8 @@ class ExecutionResult:
 
 class MCPError(Exception):
     """MCP 協議專用的錯誤類型"""
-    def __init__(
-        self,
-        code: int,
-        message: str,
-        data: dict[str, Any] | None = None
-    ):
+
+    def __init__(self, code: int, message: str, data: dict[str, Any] | None = None):
         self.code = code
         self.message = message
         self.data = data

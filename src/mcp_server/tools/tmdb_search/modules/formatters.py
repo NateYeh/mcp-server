@@ -3,6 +3,7 @@
 
 負責將 MediaInfo 格式化為人類可讀的字串輸出
 """
+
 from __future__ import annotations
 
 from mcp_server.tools.tmdb_search.modules.models import MediaInfo, MediaType

@@ -3,7 +3,9 @@ execute_shell Tool
 
 執行 Linux Shell 命令（使用 bash）
 """
+
 import asyncio
+import contextlib
 import logging
 import os
 import signal
@@ -30,20 +32,11 @@ logger = logging.getLogger(__name__)
     input_schema={
         "type": "object",
         "properties": {
-            "command": {
-                "type": "string",
-                "description": "要執行的 shell 命令，支援 bash 語法。例如 'ls -la', 'cat file.txt', 'ps aux | grep python'"
-            },
-            "timeout": {
-                "type": "integer",
-                "default": MAX_EXECUTION_TIME,
-                "minimum": 1,
-                "maximum": 300,
-                "description": "執行超時時間（秒），預設 300 秒，最大 300 秒"
-            }
+            "command": {"type": "string", "description": "要執行的 shell 命令，支援 bash 語法。例如 'ls -la', 'cat file.txt', 'ps aux | grep python'"},
+            "timeout": {"type": "integer", "default": MAX_EXECUTION_TIME, "minimum": 1, "maximum": 300, "description": "執行超時時間（秒），預設 300 秒，最大 300 秒"},
         },
-        "required": ["command"]
-    }
+        "required": ["command"],
+    },
 )
 async def handle_execute_shell(args: dict[str, Any]) -> ExecutionResult:
     """處理 execute_shell 請求"""
@@ -61,11 +54,7 @@ async def handle_execute_shell(args: dict[str, Any]) -> ExecutionResult:
     return await execute_shell_command(command, timeout)
 
 
-async def execute_shell_command(
-    command: str,
-    timeout: int = MAX_EXECUTION_TIME,
-    working_dir: Path | None = None
-) -> ExecutionResult:
+async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME, working_dir: Path | None = None) -> ExecutionResult:
     """
     執行 Linux Shell 命令。
 
@@ -96,10 +85,7 @@ async def execute_shell_command(
             Path(cwd).mkdir(parents=True, exist_ok=True)
             logger.warning(f"工作目錄不存在，已創建: {cwd}")
 
-        logger.info(
-            f"執行 Shell 命令: {command[:100]}{'...' if len(command) > 100 else ''} "
-            f"(timeout={timeout}s)"
-        )
+        logger.info(f"執行 Shell 命令: {command[:100]}{'...' if len(command) > 100 else ''} (timeout={timeout}s)")
 
         proc = await asyncio.create_subprocess_shell(
             command,
@@ -107,32 +93,23 @@ async def execute_shell_command(
             stderr=asyncio.subprocess.PIPE,
             cwd=cwd,
             executable="/bin/bash",
-            preexec_fn=os.setsid  # 建立新進程組
+            preexec_fn=os.setsid,  # 建立新進程組
         )
 
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             # 殺掉整個進程組
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
             await proc.wait()
             logger.warning(f"Shell 執行超時 ({timeout}s)，整個進程組已終止")
             return ExecutionResult(
-                success=False,
-                error_type="TimeoutError",
-                stderr=f"Execution timeout after {timeout}s",
-                returncode=-1,
-                execution_time=f">{timeout}s",
-                metadata={"command": command}
+                success=False, error_type="TimeoutError", stderr=f"Execution timeout after {timeout}s", returncode=-1, execution_time=f">{timeout}s", metadata={"command": command}
             )
 
-        stdout_text = stdout_bytes.decode('utf-8', errors='replace')
-        stderr_text = stderr_bytes.decode('utf-8', errors='replace')
+        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+        stderr_text = stderr_bytes.decode("utf-8", errors="replace")
 
         # 截斷過長輸出
         if len(stdout_text) > MAX_OUTPUT_LENGTH:
@@ -148,18 +125,11 @@ async def execute_shell_command(
             stderr=stderr_text,
             returncode=proc.returncode or 0,
             execution_time=f"{execution_time:.3f}s",
-            metadata={"command": command}
+            metadata={"command": command},
         )
 
     except Exception as e:
         logger.exception(f"執行 Shell 命令時發生錯誤: {e}")
         return ExecutionResult(
-            success=False,
-            error_type=type(e).__name__,
-            error_message=str(e),
-            stderr=str(e),
-            returncode=-1,
-            execution_time="0.000s",
-            metadata={"command": command}
+            success=False, error_type=type(e).__name__, error_message=str(e), stderr=str(e), returncode=-1, execution_time="0.000s", metadata={"command": command}
         )
-

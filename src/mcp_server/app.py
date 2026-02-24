@@ -87,16 +87,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HTTP 異常處理
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -106,35 +102,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={
             "jsonrpc": "2.0" if request.url.path == "/mcp" else None,
             "id": None,
-            "error": {
-                "code": -32000 if exc.status_code == 401 else -32001,
-                "message": exc.detail,
-                "status_code": exc.status_code
-            }
-        }
+            "error": {"code": -32000 if exc.status_code == 401 else -32001, "message": exc.detail, "status_code": exc.status_code},
+        },
     )
 
 
 @app.exception_handler(MCPError)
 async def mcp_exception_handler(request: Request, exc: MCPError):
     """處理 MCPError 異常"""
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "jsonrpc": "2.0",
-            "id": None,
-            "error": {
-                "code": exc.code,
-                "message": exc.message,
-                "data": exc.data
-            }
-        }
-    )
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"jsonrpc": "2.0", "id": None, "error": {"code": exc.code, "message": exc.message, "data": exc.data}})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MCP 端點 (v4.0.0 - 精簡版)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @app.post("/mcp")
 async def mcp_endpoint(req: Request) -> dict:
@@ -151,11 +133,7 @@ async def mcp_endpoint(req: Request) -> dict:
         body = await req.json()
     except Exception:
         logger.warning("請求 JSON 解析失敗")
-        return {
-            "jsonrpc": "2.0",
-            "id": None,
-            "error": {"code": -32700, "message": "Parse error: Invalid JSON"}
-        }
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error: Invalid JSON"}}
 
     req_id = body.get("id")
     method = body.get("method")
@@ -173,47 +151,26 @@ async def mcp_endpoint(req: Request) -> dict:
         return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
     except MCPError as e:
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "error": {"code": e.code, "message": e.message, "data": e.data}
-        }
+        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": e.code, "message": e.message, "data": e.data}}
     except ValueError as e:
         logger.exception(f"參數錯誤: {e}")
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "error": {"code": -32602, "message": f"Invalid params: {str(e)}"}
-        }
+        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Invalid params: {str(e)}"}}
     except Exception as e:
         logger.exception(f"處理請求失敗: {e}")
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "error": {"code": -32603, "message": f"Internal error: {str(e)}"}
-        }
+        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32603, "message": f"Internal error: {str(e)}"}}
 
 
 def _handle_initialize() -> dict:
     """處理 initialize method"""
     return {
         "protocolVersion": "2024-11-05",
-        "capabilities": {
-            "tools": {},
-            "resources": {},
-            "prompts": {}
-        },
+        "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
         "serverInfo": {
             "name": "NATE-MCP-SERVER",
             "version": "4.0.0",
             "architecture": "modular",
-            "features": [
-                "python_execution",
-                "package_management",
-                "version_query",
-                "shell_execution"
-            ]
-        }
+            "features": ["python_execution", "package_management", "version_query", "shell_execution"],
+        },
     }
 
 
@@ -257,11 +214,7 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
     # 檢查該 API Key 是否有權限執行此 tool
     if not is_tool_allowed(request, tool_name):
         logger.warning(f"Tool '{tool_name}' 權限不足")
-        raise MCPError(
-            code=-32603,
-            message=f"Permission denied: Tool '{tool_name}' is not allowed for this API Key",
-            data={"tool": tool_name}
-        )
+        raise MCPError(code=-32603, message=f"Permission denied: Tool '{tool_name}' is not allowed for this API Key", data={"tool": tool_name})
 
     exec_result = await registry.execute(tool_name, args, request)
     result = format_tool_result(exec_result)
@@ -276,6 +229,7 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
 # 健康檢查端點
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @app.get("/mcp")
 async def mcp_get(req: Request) -> dict:
     """健康檢查端點，受 Bearer Token 保護。"""
@@ -283,6 +237,7 @@ async def mcp_get(req: Request) -> dict:
 
     # 取得 Python 版本資訊
     import platform
+
     version_info = {
         "version": platform.python_version(),
         "implementation": platform.python_implementation(),
@@ -298,25 +253,16 @@ async def mcp_get(req: Request) -> dict:
         "protocol": "MCP 2024-11-05",
         "version": "4.0.0",
         "architecture": "modular",
-        "features": [
-            "python_execution",
-            "package_management",
-            "version_query",
-            "shell_execution"
-        ],
+        "features": ["python_execution", "package_management", "version_query", "shell_execution"],
         "tools_loaded": registry.get_tool_count(),
         "security": {
             "api_key_required": bool(API_KEYS),
             "api_keys_count": len(API_KEYS) if API_KEYS else 0,
-            "auth_method": "Authorization: Bearer <token>" if API_KEYS else "None (Development Mode)"
+            "auth_method": "Authorization: Bearer <token>" if API_KEYS else "None (Development Mode)",
         },
         "python": version_info,
-        "config": {
-            "work_directory": str(WORK_DIR.absolute()),
-            "python_timeout": MAX_EXECUTION_TIME,
-            "max_output_length": 100000
-        },
-        "stats": {"temp_python_files": py_files}
+        "config": {"work_directory": str(WORK_DIR.absolute()), "python_timeout": MAX_EXECUTION_TIME, "max_output_length": 100000},
+        "stats": {"temp_python_files": py_files},
     }
 
 

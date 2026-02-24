@@ -13,7 +13,7 @@ import asyncio
 import base64
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from playwright.async_api import Page
 
@@ -91,6 +91,7 @@ class BrowserManager:
                 return
 
             from playwright.async_api import async_playwright
+
             self._playwright = await async_playwright().start()
 
             # 優先嘗試 CDP 連線 (如果定義了 PLAYWRIGHT_CDP_ENDPOINT)
@@ -111,11 +112,12 @@ class BrowserManager:
             # 如果 CDP 連線失敗或未定義，則啟動容器內建瀏覽器 (Fallback)
             try:
                 import os
+
                 headless = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
                 logger.info(f"正在啟動容器內建 Chromium 瀏覽器 (headless={headless})...")
                 self._browser = await self._playwright.chromium.launch(
                     headless=headless,
-                    args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]  # Docker 環境必備
+                    args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],  # Docker 環境必備
                 )
                 logger.info(f"✅ 已啟動內建瀏覽器: {self._browser.version}")
             except Exception as e:
@@ -123,7 +125,7 @@ class BrowserManager:
                     await self._playwright.stop()
                     self._playwright = None
                 logger.error(f"❌ 無法啟動內建瀏覽器: {e}")
-                raise RuntimeError(f"瀏覽器啟動失敗 (CDP與內建皆不可用): {e}")
+                raise RuntimeError(f"瀏覽器啟動失敗 (CDP與內建皆不可用): {e}") from e
 
             # 取得或建立 Page
             contexts = self._browser.contexts
@@ -760,7 +762,7 @@ async def handle_web_get_url(args: dict[str, Any]) -> ExecutionResult:
 
         # 支援遠端模式的 PageProxy
         if browser_manager.is_remote:
-            url = await page.get_url()
+            url = await cast(Any, page).get_url()
         else:
             url = page.url
 
@@ -799,9 +801,9 @@ async def handle_web_get_status(args: dict[str, Any]) -> ExecutionResult:
 
         # 支援遠端模式
         if is_remote:
-            url = await page.get_url()
+            url = await cast(Any, page).get_url()
             title = await page.title()
-            viewport = await page.get_viewport_size()
+            viewport = await cast(Any, page).get_viewport_size()
         else:
             url = page.url
             title = await page.title()
@@ -819,11 +821,13 @@ async def handle_web_get_status(args: dict[str, Any]) -> ExecutionResult:
         else:
             stdout_parts.append(f"CDP Endpoint: {CDP_ENDPOINT}")
 
-        stdout_parts.extend([
-            "連接狀態: ✅ 已連接",
-            f"當前 URL: {url}",
-            f"頁面標題: {title}",
-        ])
+        stdout_parts.extend(
+            [
+                "連接狀態: ✅ 已連接",
+                f"當前 URL: {url}",
+                f"頁面標題: {title}",
+            ]
+        )
 
         if viewport:
             stdout_parts.append(f"Viewport: {viewport['width']}x{viewport['height']}")
@@ -865,7 +869,7 @@ async def handle_web_get_cookies(args: dict[str, Any]) -> ExecutionResult:
 
         # 支援遠端模式
         if browser_manager.is_remote:
-            cookies = await page.get_cookies()
+            cookies = await cast(Any, page).get_cookies()
         else:
             context = page.context
             cookies = await context.cookies()
@@ -953,10 +957,10 @@ async def handle_web_set_cookie(args: dict[str, Any]) -> ExecutionResult:
 
         # 設定 cookie
         if browser_manager.is_remote:
-            await page.add_cookies([cookie])
+            await cast(Any, page).add_cookies([cookie])
         else:
             context = page.context
-            await context.add_cookies([cookie])
+            await context.add_cookies(cast(Any, [cookie]))
 
         execution_time = (datetime.now() - start_time).total_seconds()
 
@@ -991,7 +995,7 @@ async def handle_web_clear_cookies(args: dict[str, Any]) -> ExecutionResult:
 
         # 清除 cookies
         if browser_manager.is_remote:
-            await page.clear_cookies()
+            await cast(Any, page).clear_cookies()
         else:
             context = page.context
             await context.clear_cookies()

@@ -15,8 +15,8 @@ from mcp_server.config import (
     GEMINI_PAY_KEY,
     GEMINI_PROXY_URL,
     MAX_EXECUTION_TIME,
-    OLLAMA_PROXY_URL,
     MCP_PORT,
+    OLLAMA_PROXY_URL,
     WORK_DIR,
     cleanup_work_directory,
 )

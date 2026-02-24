@@ -3,6 +3,7 @@
 
 包含通用工具函數與格式化功能
 """
+
 import logging
 from typing import Any
 
@@ -22,10 +23,7 @@ def format_tool_result(result: ExecutionResult) -> dict[str, Any]:
         MCP 格式的字典
     """
     text_output = result.to_text_output()
-    response = {
-        "content": [{"type": "text", "text": text_output}],
-        "isError": not result.success
-    }
+    response = {"content": [{"type": "text", "text": text_output}], "isError": not result.success}
     if result.metadata:
         response["metadata"] = result.metadata
 

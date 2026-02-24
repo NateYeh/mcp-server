@@ -61,6 +61,7 @@ ALLOWED_EXTENSIONS = {
 # ═══════════════════════════════════════════════════════════════════════════════
 class ChatError(Enum):
     """直播網站可能遇到的錯誤狀態。"""
+
     NOT_FOUND = "Model not found"
     SERVER_ERROR = "Internal Server Error"
     OFF = "off"

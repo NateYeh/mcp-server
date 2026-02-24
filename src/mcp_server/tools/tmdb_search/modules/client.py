@@ -3,6 +3,7 @@ TMDB API 客戶端
 
 負責與 TMDB API 進行通訊，搜尋電影和電視劇資訊
 """
+
 from __future__ import annotations
 
 import contextlib

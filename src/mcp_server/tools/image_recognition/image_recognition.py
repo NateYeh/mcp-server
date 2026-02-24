@@ -103,11 +103,7 @@ def _get_extension_from_content_type(content_type: str) -> str:
     return mime_to_ext.get(mime, ".png")
 
 
-def _download_image(
-    url: str,
-    work_dir: Path,
-    timeout: int = DEFAULT_DOWNLOAD_TIMEOUT
-) -> tuple[bool, str, str]:
+def _download_image(url: str, work_dir: Path, timeout: int = DEFAULT_DOWNLOAD_TIMEOUT) -> tuple[bool, str, str]:
     """
     下載圖片到指定目錄。
 
@@ -132,12 +128,7 @@ def _download_image(
         logger.info(f"開始下載圖片: {url}")
 
         # 發送請求
-        response = requests.get(
-            url,
-            timeout=timeout,
-            stream=True,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        )
+        response = requests.get(url, timeout=timeout, stream=True, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
         response.raise_for_status()
 
         # 檢查 Content-Length
@@ -183,12 +174,7 @@ def _download_image(
         return False, "", f"下載時發生錯誤: {e}"
 
 
-def _recognize_image(
-    image_path: str,
-    prompt: str,
-    system_instruction: str,
-    ai_config: AIConfig
-) -> tuple[bool, str, str]:
+def _recognize_image(image_path: str, prompt: str, system_instruction: str, ai_config: AIConfig) -> tuple[bool, str, str]:
     """
     呼叫 AI 進行圖片辨識。
 
@@ -205,13 +191,7 @@ def _recognize_image(
         logger.info(f"開始 AI 辨識: provider={ai_config.provider}, model={ai_config.model_name}")
 
         # 呼叫 natekit 的 process_prompt
-        success, result_text, output_image_path = process_prompt(
-            ai_config=ai_config,
-            system_text=system_instruction,
-            prompt_text=prompt,
-            image_path_list=[image_path],
-            role=0
-        )
+        success, result_text, output_image_path = process_prompt(ai_config=ai_config, system_text=system_instruction, prompt_text=prompt, image_path_list=[image_path], role=0)
 
         if not success:
             return False, "", f"AI 辨識失敗: {result_text}"
@@ -226,44 +206,19 @@ def _recognize_image(
 
 @registry.register(
     name="image_recognition",
-    description=(
-        "下載圖片並使用 AI 模型進行內容辨識分析。"
-        "支援主流圖片格式（PNG、JPEG、GIF、WebP、BMP）。"
-        "可指定 AI 模型與提示詞進行各種圖片分析任務。"
-    ),
+    description=("下載圖片並使用 AI 模型進行內容辨識分析。支援主流圖片格式（PNG、JPEG、GIF、WebP、BMP）。可指定 AI 模型與提示詞進行各種圖片分析任務。"),
     input_schema={
         "type": "object",
         "properties": {
-            "image_url": {
-                "type": "string",
-                "description": "要辨識的圖片網址（支援 http/https）"
-            },
-            "prompt": {
-                "type": "string",
-                "description": "圖片辨識要求，例如：'描述這張圖片的內容'、'識別圖中的文字'、'分析這張圖片的風格'"
-            },
-            "system_instruction": {
-                "type": "string",
-                "description": "系統提示詞，設定 AI 的角色或輸出格式（可選，預設為專業圖片分析師）"
-            },
-            "provider": {
-                "type": "string",
-                "description": "AI 服務提供商，預設 'ollama'",
-                "default": "ollama"
-            },
-            "model_name": {
-                "type": "string",
-                "description": "模型名稱，預設 'kimi-k2.5'",
-                "default": "kimi-k2.5"
-            },
-            "download_timeout": {
-                "type": "integer",
-                "description": "圖片下載超時時間（秒），預設 60 秒",
-                "default": 60
-            }
+            "image_url": {"type": "string", "description": "要辨識的圖片網址（支援 http/https）"},
+            "prompt": {"type": "string", "description": "圖片辨識要求，例如：'描述這張圖片的內容'、'識別圖中的文字'、'分析這張圖片的風格'"},
+            "system_instruction": {"type": "string", "description": "系統提示詞，設定 AI 的角色或輸出格式（可選，預設為專業圖片分析師）"},
+            "provider": {"type": "string", "description": "AI 服務提供商，預設 'ollama'", "default": "ollama"},
+            "model_name": {"type": "string", "description": "模型名稱，預設 'kimi-k2.5'", "default": "kimi-k2.5"},
+            "download_timeout": {"type": "integer", "description": "圖片下載超時時間（秒），預設 60 秒", "default": 60},
         },
-        "required": ["image_url", "prompt"]
-    }
+        "required": ["image_url", "prompt"],
+    },
 )
 async def handle_image_recognition(args: dict[str, Any]) -> ExecutionResult:
     """
@@ -293,60 +248,40 @@ async def handle_image_recognition(args: dict[str, Any]) -> ExecutionResult:
 
     # 參數驗證
     if not image_url:
-        return ExecutionResult(
-            success=False,
-            error_type="ValidationError",
-            error_message="缺少必要參數: image_url"
-        )
+        return ExecutionResult(success=False, error_type="ValidationError", error_message="缺少必要參數: image_url")
 
     if not prompt:
-        return ExecutionResult(
-            success=False,
-            error_type="ValidationError",
-            error_message="缺少必要參數: prompt"
-        )
+        return ExecutionResult(success=False, error_type="ValidationError", error_message="缺少必要參數: prompt")
 
     # 建立 AI 配置
-    ai_config = AIConfig({
-        "provider": provider,
-        "model_name": model_name,
-    })
+    ai_config = AIConfig(
+        {
+            "provider": provider,
+            "model_name": model_name,
+        }
+    )
 
     downloaded_file = None
 
     try:
         # 步驟 1: 下載圖片
         logger.info(f"開始處理圖片辨識請求: {image_url}")
-        download_success, local_path, download_error = _download_image(
-            image_url, WORK_DIR, download_timeout
-        )
+        download_success, local_path, download_error = _download_image(image_url, WORK_DIR, download_timeout)
 
         if not download_success:
-            return ExecutionResult(
-                success=False,
-                error_type="DownloadError",
-                error_message=download_error,
-                metadata={"image_url": image_url}
-            )
+            return ExecutionResult(success=False, error_type="DownloadError", error_message=download_error, metadata={"image_url": image_url})
 
         downloaded_file = local_path
 
         # 步驟 2: AI 辨識
-        recognition_success, result, recognition_error = _recognize_image(
-            local_path, prompt, system_instruction, ai_config
-        )
+        recognition_success, result, recognition_error = _recognize_image(local_path, prompt, system_instruction, ai_config)
 
         if not recognition_success:
             return ExecutionResult(
                 success=False,
                 error_type="RecognitionError",
                 error_message=recognition_error,
-                metadata={
-                    "image_url": image_url,
-                    "local_path": local_path,
-                    "provider": provider,
-                    "model_name": model_name
-                }
+                metadata={"image_url": image_url, "local_path": local_path, "provider": provider, "model_name": model_name},
             )
 
         # 成功
@@ -354,23 +289,13 @@ async def handle_image_recognition(args: dict[str, Any]) -> ExecutionResult:
         return ExecutionResult(
             success=True,
             stdout=result,
-            metadata={
-                "image_url": image_url,
-                "local_path": local_path,
-                "provider": provider,
-                "model_name": model_name
-            },
-            execution_time=f"{execution_time:.3f}s"
+            metadata={"image_url": image_url, "local_path": local_path, "provider": provider, "model_name": model_name},
+            execution_time=f"{execution_time:.3f}s",
         )
 
     except Exception as e:
         logger.exception(f"圖片辨識過程發生未預期錯誤: {e}")
-        return ExecutionResult(
-            success=False,
-            error_type="UnexpectedError",
-            error_message=str(e),
-            metadata={"image_url": image_url}
-        )
+        return ExecutionResult(success=False, error_type="UnexpectedError", error_message=str(e), metadata={"image_url": image_url})
 
     finally:
         # 清理暫存檔案

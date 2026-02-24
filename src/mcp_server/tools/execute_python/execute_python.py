@@ -3,7 +3,9 @@ execute_python Tool
 
 執行 Python 3 代碼並返回標準輸出、錯誤訊息與執行結果
 """
+
 import asyncio
+import contextlib
 import logging
 import os
 import signal
@@ -25,20 +27,17 @@ logger = logging.getLogger(__name__)
     input_schema={
         "type": "object",
         "properties": {
-            "code": {
-                "type": "string",
-                "description": "要執行的 Python 3 源代碼。可使用標準庫與已安裝的第三方套件，執行結果透過 print() 或返回值查看。"
-            },
+            "code": {"type": "string", "description": "要執行的 Python 3 源代碼。可使用標準庫與已安裝的第三方套件，執行結果透過 print() 或返回值查看。"},
             "timeout": {
                 "type": "integer",
                 "default": MAX_EXECUTION_TIME,
                 "minimum": 1,
                 "maximum": MAX_EXECUTION_TIME,
-                "description": "執行超時時間（秒），預設 300 秒，最大 300 秒"
-            }
+                "description": "執行超時時間（秒），預設 300 秒，最大 300 秒",
+            },
         },
-        "required": ["code"]
-    }
+        "required": ["code"],
+    },
 )
 async def handle_execute_python(args: dict[str, Any]) -> ExecutionResult:
     """處理 execute_python 請求"""
@@ -55,10 +54,8 @@ async def handle_execute_python(args: dict[str, Any]) -> ExecutionResult:
 
     return await execute_python_file(code, timeout)
 
-async def execute_python_file(
-    code: str,
-    timeout: int = MAX_EXECUTION_TIME
-) -> ExecutionResult:
+
+async def execute_python_file(code: str, timeout: int = MAX_EXECUTION_TIME) -> ExecutionResult:
     """
     將代碼寫入臨時檔案後執行。
 
@@ -87,21 +84,17 @@ async def execute_python_file(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=str(WORK_DIR),
-            preexec_fn=os.setsid  # 建立新進程組
+            preexec_fn=os.setsid,  # 建立新進程組
         )
 
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
-            stdout_text = stdout_bytes.decode('utf-8', errors='replace')
-            stderr_text = stderr_bytes.decode('utf-8', errors='replace')
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+            stderr_text = stderr_bytes.decode("utf-8", errors="replace")
         except asyncio.TimeoutError:
             # 殺掉整個進程組
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
             await proc.wait()
             logger.warning(f"執行超時 ({timeout}s)，整個進程組已終止")
             return ExecutionResult(
@@ -110,7 +103,7 @@ async def execute_python_file(
                 stderr=f"Execution timeout after {timeout}s",
                 returncode=-1,
                 execution_time=f">{timeout}s",
-                metadata={"temp_file": str(temp_file)}
+                metadata={"temp_file": str(temp_file)},
             )
 
         # 截斷過長輸出
@@ -127,7 +120,7 @@ async def execute_python_file(
             stderr=stderr_text,
             returncode=proc.returncode or 0,
             execution_time=f"{execution_time:.3f}s",
-            metadata={"temp_file": str(temp_file)}
+            metadata={"temp_file": str(temp_file)},
         )
 
     except Exception as e:
@@ -139,5 +132,5 @@ async def execute_python_file(
             stderr=str(e),
             returncode=-1,
             execution_time="0.000s",
-            metadata={"temp_file": str(temp_file) if temp_file else None}
+            metadata={"temp_file": str(temp_file) if temp_file else None},
         )

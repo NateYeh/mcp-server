@@ -55,6 +55,7 @@ class APIKeyManager:
     def _load_json_env(key: str, default: Any = None) -> Any:
         """從環境變數載入 JSON 格式的值"""
         import base64
+
         value = os.getenv(key, "")
         if not value:
             return default
@@ -109,9 +110,11 @@ WORK_DIR.mkdir(parents=True, exist_ok=True)
 # Shell 預設執行目錄
 DEFAULT_SHELL_CWD = Path(os.getenv("MCP_SHELL_CWD", "."))
 
+
 def cleanup_work_directory() -> None:
     """清理工作目錄中的所有檔案"""
     import shutil
+
     WORK_DIR.mkdir(parents=True, exist_ok=True)
 
     if WORK_DIR.exists():
@@ -279,10 +282,7 @@ else:
 # ═══════════════════════════════════════════════════════════════════════════════
 GEMINI_API_KEYS = APIKeyManager.get_gemini_keys()
 GEMINI_PAY_KEY = os.getenv("GEMINI_PAY_KEY", "")
-GEMINI_API_BASE_URL = os.getenv(
-    "GEMINI_API_BASE_URL",
-    "https://generativelanguage.googleapis.com"
-)
+GEMINI_API_BASE_URL = os.getenv("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com")
 GEMINI_PROXY_URL = os.getenv("GEMINI_PROXY_URL", "")
 OLLAMA_PROXY_URL = os.getenv("OLLAMA_PROXY_URL", "")
 GEMINI_API_VERSION = "v1beta"

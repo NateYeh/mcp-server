@@ -3,6 +3,7 @@ Tool Registry 基礎架構
 
 提供 Tool 註冊與執行的核心機制
 """
+
 import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ ToolHandler = Callable[..., Awaitable[ExecutionResult]]
 @dataclass
 class ToolDefinition:
     """Tool 定義，包含 schema 與 handler"""
+
     name: str
     description: str
     input_schema: dict[str, Any]
@@ -30,6 +32,7 @@ class ToolRegistry:
 
     使用單例模式，確保全域只有一個 registry
     """
+
     _instance: ClassVar["ToolRegistry | None"] = None
 
     # 明確宣告實例屬性，解決 Pylance 的靜態分析警告
@@ -41,12 +44,7 @@ class ToolRegistry:
             cls._instance._tools = {}
         return cls._instance
 
-    def register(
-        self,
-        name: str,
-        description: str,
-        input_schema: dict[str, Any]
-    ) -> Callable[[ToolHandler], ToolHandler]:
+    def register(self, name: str, description: str, input_schema: dict[str, Any]) -> Callable[[ToolHandler], ToolHandler]:
         """
         Decorator 用於註冊 Tool
 
@@ -59,33 +57,18 @@ class ToolRegistry:
             async def handle_python(args: dict) -> ExecutionResult:
                 ...
         """
+
         def decorator(handler: ToolHandler) -> ToolHandler:
-            self._tools[name] = ToolDefinition(
-                name=name,
-                description=description,
-                input_schema=input_schema,
-                handler=handler
-            )
+            self._tools[name] = ToolDefinition(name=name, description=description, input_schema=input_schema, handler=handler)
             return handler
+
         return decorator
 
     def list_tools(self) -> list[dict[str, Any]]:
         """列出所有 Tool 的 schema"""
-        return [
-            {
-                "name": t.name,
-                "description": t.description,
-                "inputSchema": t.input_schema
-            }
-            for t in self._tools.values()
-        ]
+        return [{"name": t.name, "description": t.description, "inputSchema": t.input_schema} for t in self._tools.values()]
 
-    async def execute(
-        self,
-        name: str,
-        args: dict[str, Any],
-        request: Request | None = None
-    ) -> ExecutionResult:
+    async def execute(self, name: str, args: dict[str, Any], request: Request | None = None) -> ExecutionResult:
         """
         執行指定的 Tool
 

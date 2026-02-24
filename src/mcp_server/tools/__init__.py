@@ -18,11 +18,11 @@ from mcp_server.tools.image_recognition import image_recognition  # noqa: F401
 from mcp_server.tools.install_package import install_package  # noqa: F401
 from mcp_server.tools.read_file import read_file  # noqa: F401
 from mcp_server.tools.replace_block import replace_block  # noqa: F401
-from mcp_server.tools.write_file import write_file  # noqa: F401
 from mcp_server.tools.replace_lines import replace_lines  # noqa: F401
 from mcp_server.tools.tmdb_search import tmdb_search  # noqa: F401
 from mcp_server.tools.web_ollama import web_ollama  # noqa: F401
 from mcp_server.tools.web_playwright import web_playwright  # noqa: F401
+from mcp_server.tools.write_file import write_file  # noqa: F401
 
 logger = logging.getLogger(__name__)
 logger.info(f"🧰 已載入 {registry.get_tool_count()} 個 Tool 模組")

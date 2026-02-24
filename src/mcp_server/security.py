@@ -3,6 +3,7 @@
 
 處理 API Key 驗證與安全相關功能，支援多 Key 權限管理
 """
+
 import fnmatch
 import logging
 from typing import Any
@@ -49,9 +50,7 @@ async def verify_api_key(request: Request) -> list[str]:
     parts = auth_header.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         client_host = request.client.host if request.client else "unknown"
-        logger.warning(
-            f"無效的 Authorization 格式: {client_host}, Header: {auth_header[:20]}..."
-        )
+        logger.warning(f"無效的 Authorization 格式: {client_host}, Header: {auth_header[:20]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Authorization format. Expected 'Bearer <token>'",
@@ -174,10 +173,7 @@ def filter_allowed_tools(request: Request, all_tools: list[dict]) -> list[dict]:
         return any(fnmatch.fnmatch(tool_name, pattern) for pattern in allowed_tools)
 
     # 先過濾允許的 tools，再排除指定的 tools
-    return [
-        tool for tool in all_tools
-        if is_allowed(tool.get("name", "")) and not is_excluded(tool.get("name", ""))
-    ]
+    return [tool for tool in all_tools if is_allowed(tool.get("name", "")) and not is_excluded(tool.get("name", ""))]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

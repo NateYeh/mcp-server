@@ -164,6 +164,7 @@ def configure_client(
 # 便捷函式（向後相容）
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _generate_content_gemini(
     ai_config: AIConfig,
     chat_data: dict[str, Any] | None = None,
@@ -397,9 +398,7 @@ def process_prompt(
         else:
             chat_data = _generate_content_request(ai_config, chat_data=chat_data, system_instruction=system_text)
 
-    chat_data = _generate_content_request(
-        ai_config, chat_data=chat_data, text=prompt_text, role="user", image_path_list=image_path_list
-    )
+    chat_data = _generate_content_request(ai_config, chat_data=chat_data, text=prompt_text, role="user", image_path_list=image_path_list)
 
     # 發送請求
     client = get_client()

@@ -3,6 +3,7 @@
 
 包含 MediaType 枚舉和 MediaInfo 資料類別
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
