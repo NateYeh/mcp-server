@@ -1,27 +1,53 @@
 services:
   mcp-server:
+    # 📌 建置設定：告訴 Docker 如何從原始碼編譯 Image
     build:
       context: .
       dockerfile: Dockerfile
       args:
+        # UID/GID 建議設為宿主機使用者的 ID (可用 id 指令查看)
+        # 這樣容器產生的檔案，妳在外面才不會因為權限問題無法刪除
         UID: ${UID:-0}
         GID: ${GID:-0}
+
+    # 📌 容器名稱：方便妳用 docker ps 辨識
     container_name: mcp-server-container
+
+    # 📌 端口映射 [宿主機端口:容器內端口]
     ports:
-      - "8000:8000"
+      # MCP 服務主端口 (從 .env 讀取)
+      - "${MCP_PORT:-8000}:${MCP_PORT:-8000}"
+      # 遠端瀏覽器 WebSocket 端口 (從 .env 讀取)
+      - "${REMOTE_BROWSER_PORT:-8001}:${REMOTE_BROWSER_PORT:-8001}"
+
+    # 📌 環境變數：從 .env 檔案自動載入所有設定
     env_file:
       - .env
+
+    # 📌 資料掛載 [宿主機路徑:容器內路徑]
     volumes:
+      # 1. 原始碼掛載：開發時很有用，改代碼不需重新 build image 就會生效
       - .:/app
+      # 2. 日誌掛載：將運作日誌存放在宿主機，方便隨時查看
       - ./logs:/app/logs
+      # 3. 工作目錄：MCP 工具產生的檔案會放在這，這是最重要的掛載點
       - ./workspace:/app/workspace
+      # 4. 系統緩存：優化 Playwright 瀏覽器運作效能
       - /dev/shm:/dev/shm
+      # 5. (選用) 外部路徑：若有需要操作 NAS 或其他掛載點
+      # - /volume1/public:/mnt/public
+
+    # 📌 執行環境變數補充
     environment:
       - ENV=production
-      - PYTHONUNBUFFERED=1
-      # Playwright 瀏覽器配置 (留空則自動啟動容器內建瀏覽器)
-      - PLAYWRIGHT_CDP_ENDPOINT=${PLAYWRIGHT_CDP_ENDPOINT:-} 
-      - PLAYWRIGHT_DEFAULT_TIMEOUT=30000
+      - PYTHONUNBUFFERED=1 # 讓 Python 日誌即時輸出，不會累積在緩衝區
+      # 瀏覽器 CDP 地址 (若留空則使用容器內建瀏覽器)
+      - PLAYWRIGHT_CDP_ENDPOINT=${PLAYWRIGHT_CDP_ENDPOINT:-}
+
+    # 📌 重新啟動策略
+    # unless-stopped: 除非手動停止，否則當掉或開機時都會自動啟動
     restart: unless-stopped
+
+    # 📌 互動模式設定 (MCP Server 透過 stdio 通訊時需要)
     stdin_open: true
     tty: true
