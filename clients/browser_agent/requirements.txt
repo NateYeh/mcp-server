@@ -1,0 +1,14 @@
+# Browser Agent 依賴
+# Python 3.10+
+
+# 環境變數載入
+python-dotenv>=1.0.0
+
+# WebSocket 客戶端
+websockets>=12.0
+
+# Playwright 瀏覽器自動化
+playwright>=1.40.0
+
+# 安裝後請執行：
+# playwright install chromium

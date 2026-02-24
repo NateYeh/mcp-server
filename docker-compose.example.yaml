@@ -1,0 +1,27 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-0}
+        GID: ${GID:-0}
+    container_name: mcp-server-container
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - ./workspace:/app/workspace
+      - /dev/shm:/dev/shm
+    environment:
+      - ENV=production
+      - PYTHONUNBUFFERED=1
+      # Playwright 瀏覽器配置 (留空則自動啟動容器內建瀏覽器)
+      - PLAYWRIGHT_CDP_ENDPOINT=${PLAYWRIGHT_CDP_ENDPOINT:-} 
+      - PLAYWRIGHT_DEFAULT_TIMEOUT=30000
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
