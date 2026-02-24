@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     libasound2 \
+    tini \
     && rm -rf /var/lib/apt/lists/*
 
 # 處理使用者與權限邏輯
@@ -78,8 +79,6 @@ USER $UID
 
 EXPOSE 8000
 
-# 安裝 tini 以正確處理健康檢查與殭屍進程
-RUN apt-get update && apt-get install -y tini && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # 啟動命令
