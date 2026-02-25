@@ -104,28 +104,29 @@ class BrowserManager:
                     try:
                         logger.info(f"正在嘗試連接遠端/外部 CDP: {endpoint}")
                         self._browser = await self._playwright.chromium.connect_over_cdp(endpoint)
-                        logger.info(f"✅ 已連接到遠端瀏覽器: {self._browser.version}")
-                        return
+                        logger.info(f"✅ 已連接到外部瀏覽器 (CDP): {self._browser.version}")
+                        break
                     except Exception as e:
                         logger.warning(f"遠端連線 {endpoint} 失敗: {e}，準備嘗試下一種模式。")
 
             # 如果 CDP 連線失敗或未定義，則啟動容器內建瀏覽器 (Fallback)
-            try:
-                import os
+            if self._browser is None:
+                try:
+                    import os
 
-                headless = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
-                logger.info(f"正在啟動容器內建 Chromium 瀏覽器 (headless={headless})...")
-                self._browser = await self._playwright.chromium.launch(
-                    headless=headless,
-                    args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],  # Docker 環境必備
-                )
-                logger.info(f"✅ 已啟動內建瀏覽器: {self._browser.version}")
-            except Exception as e:
-                if self._playwright:
-                    await self._playwright.stop()
-                    self._playwright = None
-                logger.error(f"❌ 無法啟動內建瀏覽器: {e}")
-                raise RuntimeError(f"瀏覽器啟動失敗 (CDP與內建皆不可用): {e}") from e
+                    headless = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
+                    logger.info(f"正在啟動容器內建 Chromium 瀏覽器 (headless={headless})...")
+                    self._browser = await self._playwright.chromium.launch(
+                        headless=headless,
+                        args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],  # Docker 環境必備
+                    )
+                    logger.info(f"✅ 已啟動內建瀏覽器: {self._browser.version}")
+                except Exception as e:
+                    if self._playwright:
+                        await self._playwright.stop()
+                        self._playwright = None
+                    logger.error(f"❌ 無法啟動內建瀏覽器: {e}")
+                    raise RuntimeError(f"瀏覽器啟動失敗 (CDP與內建皆不可用): {e}") from e
 
             # 取得或建立 Page
             contexts = self._browser.contexts
