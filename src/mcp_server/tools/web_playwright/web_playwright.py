@@ -305,10 +305,12 @@ async def handle_web_screenshot(args: dict[str, Any]) -> ExecutionResult:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
             filename = f"screenshot_{timestamp}.png"
             filepath = SCREENSHOT_DIR / filename
+            # 確保目錄存在
+            filepath.parent.mkdir(parents=True, exist_ok=True)
             filepath.write_bytes(screenshot_bytes)
-            metadata["file_path"] = str(filepath)
+            metadata["file_path"] = str(filepath.resolve())
             metadata["file_size_kb"] = round(len(screenshot_bytes) / 1024, 2)
-            stdout_parts.append(f"檔案: {filepath}")
+            stdout_parts.append(f"檔案: {filepath.resolve()}")
             stdout_parts.append(f"大小: {metadata['file_size_kb']} KB")
 
         # 取得頁面尺寸
