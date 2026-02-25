@@ -22,6 +22,7 @@ from mcp_server.tools.replace_lines import replace_lines  # noqa: F401
 from mcp_server.tools.tmdb_search import tmdb_search  # noqa: F401
 from mcp_server.tools.web_ollama import web_ollama  # noqa: F401
 from mcp_server.tools.web_playwright import web_playwright  # noqa: F401
+from mcp_server.tools.sqlite_query import sqlite_query  # noqa: F401
 from mcp_server.tools.write_file import write_file  # noqa: F401
 
 logger = logging.getLogger(__name__)
