@@ -27,7 +27,8 @@ from mcp_server.tools import registry
 def main():
     """主函式"""
     # 設定日誌
-    setup_logging()
+    import logging
+    setup_logging(file_log_level=logging.INFO)
 
     # 清理工作目錄
     cleanup_work_directory()

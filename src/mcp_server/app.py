@@ -207,6 +207,7 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
     Raises:
         MCPError: 權限不足或執行失敗
     """
+    import time
     params = body.get("params", {})
     tool_name = params.get("name")
     args = params.get("arguments", {})
@@ -216,13 +217,22 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
         logger.warning(f"Tool '{tool_name}' 權限不足")
         raise MCPError(code=-32603, message=f"Permission denied: Tool '{tool_name}' is not allowed for this API Key", data={"tool": tool_name})
 
-    exec_result = await registry.execute(tool_name, args, request)
-    result = format_tool_result(exec_result)
+    start_time = time.perf_counter()
+    logger.info(f"⏳ [Tool Start] {tool_name} | Args: {str(args)[:200]}{'...' if len(str(args)) > 200 else ''}")
 
-    # 記錄回覆摘要 (不進行完整序列化以節省效能)
-    logger.info(f"✅ Tool {tool_name} 執行完成")
+    try:
+        exec_result = await registry.execute(tool_name, args, request)
+        duration = time.perf_counter() - start_time
+        result = format_tool_result(exec_result)
 
-    return result
+        # 記錄回覆摘要
+        status_icon = "✅" if exec_result.success else "❌"
+        logger.info(f"{status_icon} [Tool End] {tool_name} | Duration: {duration:.3f}s")
+        return result
+    except Exception as e:
+        duration = time.perf_counter() - start_time
+        logger.error(f"🔥 [Tool Error] {tool_name} | Duration: {duration:.3f}s | Error: {str(e)}")
+        raise e
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

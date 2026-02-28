@@ -95,6 +95,7 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
             executable="/bin/bash",
             preexec_fn=os.setsid,  # 建立新進程組
         )
+        logger.info(f"🐚 Shell 進程已啟動 | PID: {proc.pid}")
 
         try:
             stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
