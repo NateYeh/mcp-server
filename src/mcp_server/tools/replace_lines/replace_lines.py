@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
             "file_path": {"type": "string", "description": "要修改的檔案路徑。只支援絕對路徑，例如 '/home/user/project/src/main.py'"},
             "start_line": {"type": "integer", "minimum": 1, "description": "開始行號（1-based，包含）"},
             "end_line": {"type": "integer", "minimum": 1, "description": "結束行號（1-based，包含），必須大於等於 start_line"},
-            "new_content": {"type": "string", "description": "用於替換的新內容（可以是多行文字）"},
+            "new_content": {"type": "string", "description": "用於替換的新內容（可以是多行文字）。若傳入空字串則為純刪除操作，可降低替換風險"},
             "dry_run": {"type": "boolean", "default": False, "description": "預覽模式：顯示修改前後的差異，但不實際寫入檔案"},
             "validate_syntax": {"type": "boolean", "default": False, "description": "是否驗證 Python 檔案的語法正確性（僅對 .py 檔案有效）"},
         },
