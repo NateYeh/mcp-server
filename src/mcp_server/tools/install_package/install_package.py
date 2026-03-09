@@ -34,7 +34,14 @@ async def handle_install_package(args: dict[str, Any]) -> ExecutionResult:
     package_spec = args.get("package")
 
     if not package_spec or not isinstance(package_spec, str):
-        raise ValueError("必須提供有效的 package 參數")
+        logger.warning(f"無效的 package 參數: {type(package_spec)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 package 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     result = await install_package(package_spec.strip())
 

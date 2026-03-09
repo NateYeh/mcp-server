@@ -245,10 +245,24 @@ async def handle_sqlite_query(args: dict[str, Any]) -> ExecutionResult:
     params = args.get("params")
 
     if not sql or not isinstance(sql, str):
-        raise ValueError("必須提供有效的 sql 參數")
+        logger.warning(f"無效的 sql 參數: {type(sql)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 sql 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not db_path or not isinstance(db_path, str):
-        raise ValueError("必須提供 database 參數（資料庫檔案路徑）")
+        logger.warning(f"無效的 database 參數: {type(db_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供 database 參數（資料庫檔案路徑）",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     logger.info(f"執行 SQLite 查詢: {sql[:100]}... (db={db_path})")
 
@@ -274,7 +288,14 @@ async def handle_sqlite_tables(args: dict[str, Any]) -> ExecutionResult:
     db_path = args.get("database")
 
     if not db_path or not isinstance(db_path, str):
-        raise ValueError("必須提供 database 參數（資料庫檔案路徑）")
+        logger.warning(f"無效的 database 參數: {type(db_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供 database 參數（資料庫檔案路徑）",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     logger.info(f"列出資料庫表: {db_path}")
 

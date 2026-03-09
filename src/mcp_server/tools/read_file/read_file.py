@@ -49,7 +49,14 @@ async def handle_read_file(args: dict[str, Any]) -> ExecutionResult:
 
     # 參數驗證
     if not file_path or not isinstance(file_path, str):
-        raise ValueError("必須提供有效的 file_path 參數")
+        logger.warning(f"無效的 file_path 參數: {type(file_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 file_path 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not isinstance(start_line, int) or start_line < 1:
         start_line = 1
@@ -254,6 +261,9 @@ def _resolve_path(file_path: str) -> Path:
     """解析檔案路徑（只接受絕對路徑）"""
     path = Path(file_path)
     if not path.is_absolute():
+        logger.warning(f"檔案路徑必須為絕對路徑: {file_path}")
+        # 不拋出異常，而是返回一個標記讓呼叫者處理
+        # 這裡仍然拋出異常，因為這是內部函數，由上層捕獲
         raise ValueError(f"file_path 必須為絕對路徑，當前傳入: '{file_path}'")
     return path.resolve()
 

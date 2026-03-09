@@ -56,11 +56,25 @@ async def handle_execute_mysql(args: dict[str, Any]) -> ExecutionResult:
     sql = args.get("sql")
 
     if not sql or not isinstance(sql, str):
-        raise ValueError("必須提供有效的 sql 參數")
+        logger.warning(f"無效的 sql 參數: {type(sql)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 sql 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     sql = sql.strip()
     if not sql:
-        raise ValueError("SQL 語句不可為空")
+        logger.warning("SQL 語句為空")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="SQL 語句不可為空",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     database = args.get("database") or MYSQL_DATABASE
     timeout = args.get("timeout", 60)

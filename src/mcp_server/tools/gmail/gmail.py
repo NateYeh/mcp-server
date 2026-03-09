@@ -216,7 +216,14 @@ async def handle_gmail_read(args: dict[str, Any], request: Request) -> Execution
 
         message_id = args.get("message_id")
         if not message_id:
-            raise ValueError("必須提供 message_id")
+            logger.warning("缺少 message_id 參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供 message_id",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         format_type = args.get("format", "full")
 
@@ -309,11 +316,32 @@ async def handle_gmail_send(args: dict[str, Any], request: Request) -> Execution
         body = args.get("body", "")
 
         if not to:
-            raise ValueError("必須提供收件者 (to)")
+            logger.warning("缺少收件者參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供收件者 (to)",
+                returncode=-1,
+                execution_time="0.000s",
+            )
         if not subject:
-            raise ValueError("必須提供郵件標題 (subject)")
+            logger.warning("缺少郵件標題參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供郵件標題 (subject)",
+                returncode=-1,
+                execution_time="0.000s",
+            )
         if not body:
-            raise ValueError("必須提供郵件內容 (body)")
+            logger.warning("缺少郵件內容參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供郵件內容 (body)",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         result = await gmail_service.send_email(
             account_id=account_id,
@@ -386,7 +414,14 @@ async def handle_gmail_modify(args: dict[str, Any], request: Request) -> Executi
 
         message_ids = args.get("message_ids", [])
         if not message_ids:
-            raise ValueError("必須提供 message_ids")
+            logger.warning("缺少 message_ids 參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供 message_ids",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         add_labels: list[str] = []
         remove_labels: list[str] = []
@@ -503,7 +538,14 @@ async def handle_gmail_search(args: dict[str, Any], request: Request) -> Executi
 
         query = args.get("query", "")
         if not query:
-            raise ValueError("必須提供搜尋 query")
+            logger.warning("缺少搜尋 query 參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供搜尋 query",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         max_results = min(args.get("max_results", 20), 100)
 
@@ -651,7 +693,14 @@ async def handle_gmail_label_create(args: dict[str, Any], request: Request) -> E
 
         name = args.get("name", "")
         if not name:
-            raise ValueError("必須提供標籤名稱 (name)")
+            logger.warning("缺少標籤名稱參數")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message="必須提供標籤名稱 (name)",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         color = args.get("color")
 

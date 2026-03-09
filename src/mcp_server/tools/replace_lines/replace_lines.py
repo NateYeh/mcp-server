@@ -48,16 +48,44 @@ async def handle_replace_lines(args: dict[str, Any]) -> ExecutionResult:
 
     # 參數驗證
     if not file_path or not isinstance(file_path, str):
-        raise ValueError("必須提供有效的 file_path 參數")
+        logger.warning(f"無效的 file_path 參數: {type(file_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 file_path 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not isinstance(start_line, int) or not isinstance(end_line, int):
-        raise ValueError("start_line 和 end_line 必須為整數")
+        logger.warning(f"無效的行號參數: start_line={type(start_line)}, end_line={type(end_line)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="start_line 和 end_line 必須為整數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if start_line < 1 or end_line < 1:
-        raise ValueError("行號必須從 1 開始")
+        logger.warning(f"行號必須從 1 開始: start_line={start_line}, end_line={end_line}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="行號必須從 1 開始",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if start_line > end_line:
-        raise ValueError(f"start_line ({start_line}) 不能大於 end_line ({end_line})")
+        logger.warning(f"start_line 不能大於 end_line: {start_line} > {end_line}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message=f"start_line ({start_line}) 不能大於 end_line ({end_line})",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if new_content is None:
         new_content = ""
@@ -65,7 +93,14 @@ async def handle_replace_lines(args: dict[str, Any]) -> ExecutionResult:
         new_content = str(new_content)
 
     if len(new_content) > MAX_INPUT_LENGTH:
-        raise ValueError(f"new_content 超過最大長度限制 {MAX_INPUT_LENGTH} 字符")
+        logger.warning(f"new_content 超過最大長度限制: {len(new_content)} > {MAX_INPUT_LENGTH}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message=f"new_content 超過最大長度限制 {MAX_INPUT_LENGTH} 字元",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not isinstance(dry_run, bool):
         dry_run = False
@@ -84,6 +119,7 @@ async def replace_file_lines(file_path: str, start_line: int, end_line: int, new
     將檔案中指定行號範圍的內容替換為新內容。
     """
     start_time = datetime.now()
+    start_time = datetime.now()
 
     try:
         # 解析檔案路徑
@@ -91,10 +127,24 @@ async def replace_file_lines(file_path: str, start_line: int, end_line: int, new
 
         # 檢查檔案
         if not target_path.exists():
-            raise FileNotFoundError(f"檔案不存在: {target_path}")
+            logger.warning(f"檔案不存在: {target_path}")
+            return ExecutionResult(
+                success=False,
+                error_type="FileNotFoundError",
+                error_message=f"檔案不存在: {target_path}",
+                returncode=-1,
+                execution_time=_get_elapsed_time(start_time),
+            )
 
         if not target_path.is_file():
-            raise ValueError(f"路徑不是檔案: {target_path}")
+            logger.warning(f"路徑不是檔案: {target_path}")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message=f"路徑不是檔案: {target_path}",
+                returncode=-1,
+                execution_time=_get_elapsed_time(start_time),
+            )
 
         # 讀取檔案內容
         with open(target_path, encoding="utf-8") as f:
@@ -104,7 +154,14 @@ async def replace_file_lines(file_path: str, start_line: int, end_line: int, new
 
         # 檢查行號範圍
         if start_line > total_lines:
-            raise ValueError(f"start_line ({start_line}) 超過檔案總行數 ({total_lines})")
+            logger.warning(f"start_line ({start_line}) 超過檔案總行數 ({total_lines})")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message=f"start_line ({start_line}) 超過檔案總行數 ({total_lines})",
+                returncode=-1,
+                execution_time=_get_elapsed_time(start_time),
+            )
 
         actual_end_line = min(end_line, total_lines)
 
@@ -312,6 +369,11 @@ def _validate_with_py_compile(content: str, file_path: Path) -> dict[str, Any]:
 
     except py_compile.PyCompileError as e:
         return {"valid": False, "error": f"語法錯誤: {e}", "tool": "py_compile", "fixable": False, "fixed_content": None}
+
+def _get_elapsed_time(start_time: datetime) -> str:
+    """取得經過時間"""
+    elapsed = (datetime.now() - start_time).total_seconds()
+    return f"{elapsed:.3f}s"
 
 
 def _resolve_path(file_path: str) -> Path:

@@ -43,7 +43,14 @@ async def handle_execute_shell(args: dict[str, Any]) -> ExecutionResult:
     command = args.get("command")
 
     if not command or not isinstance(command, str):
-        raise ValueError("必須提供有效的 command 參數")
+        logger.warning(f"無效的 command 參數: {type(command)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 command 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     timeout = args.get("timeout", MAX_EXECUTION_TIME)
     if not isinstance(timeout, int) or timeout < 1 or timeout > 300:
@@ -70,13 +77,27 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
 
     try:
         if len(command) > MAX_INPUT_LENGTH:
-            raise ValueError(f"Command exceeds maximum length of {MAX_INPUT_LENGTH} characters")
+            logger.warning(f"命令超過最大長度限制: {len(command)} > {MAX_INPUT_LENGTH}")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message=f"命令超過最大長度限制 {MAX_INPUT_LENGTH} 字元",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         # 安全性檢查
         cmd_normalized = command.lower().replace(" ", "")
         for pattern in DANGEROUS_SHELL_PATTERNS:
             if pattern.replace(" ", "") in cmd_normalized:
-                raise ValueError(f"Potentially dangerous command detected: {pattern}")
+                logger.warning(f"檢測到危險命令模式: {pattern}")
+                return ExecutionResult(
+                    success=False,
+                    error_type="SecurityError",
+                    error_message=f"檢測到潛在危險命令: {pattern}",
+                    returncode=-1,
+                    execution_time="0.000s",
+                )
 
         cwd = str(working_dir) if working_dir else str(DEFAULT_SHELL_CWD)
 

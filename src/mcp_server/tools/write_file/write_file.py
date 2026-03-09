@@ -49,10 +49,24 @@ async def handle_write_file(args: dict[str, Any]) -> ExecutionResult:
 
     # 參數驗證
     if not file_path or not isinstance(file_path, str):
-        raise ValueError("必須提供有效的 file_path 參數")
+        logger.warning(f"無效的 file_path 參數: {type(file_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 file_path 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if content is None:
-        raise ValueError("必須提供 content 參數")
+        logger.warning("content 參數為 None")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供 content 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not isinstance(content, str):
         content = str(content)
@@ -112,7 +126,14 @@ async def write_file(file_path: str, content: str, mode: str = "write", encoding
 
         # 檢查是否為目錄
         if target_path.exists() and target_path.is_dir():
-            raise ValueError(f"路徑是目錄，無法寫入檔案: {target_path}")
+            logger.warning(f"路徑是目錄，無法寫入檔案: {target_path}")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message=f"路徑是目錄，無法寫入檔案: {target_path}",
+                returncode=-1,
+                execution_time=_get_elapsed_time(start_time),
+            )
 
         # 處理目錄
         if not parent_dir.exists():
@@ -120,7 +141,14 @@ async def write_file(file_path: str, content: str, mode: str = "write", encoding
                 parent_dir.mkdir(parents=True, exist_ok=True)
                 logger.info(f"已建立目錄: {parent_dir}")
             else:
-                raise FileNotFoundError(f"目錄不存在: {parent_dir}")
+                logger.warning(f"目錄不存在且未啟用自動建立: {parent_dir}")
+                return ExecutionResult(
+                    success=False,
+                    error_type="FileNotFoundError",
+                    error_message=f"目錄不存在: {parent_dir}",
+                    returncode=-1,
+                    execution_time=_get_elapsed_time(start_time),
+                )
 
         # 記錄操作前的狀態
         file_existed = target_path.exists()
@@ -218,6 +246,7 @@ def _resolve_path(file_path: str) -> Path:
     """解析檔案路徑（只接受絕對路徑）"""
     path = Path(file_path)
     if not path.is_absolute():
+        logger.warning(f"檔案路徑必須為絕對路徑: {file_path}")
         raise ValueError(f"file_path 必須為絕對路徑，當前傳入: '{file_path}'")
     return path.resolve()
 

@@ -93,14 +93,35 @@ async def handle_replace_block(args: dict[str, Any]) -> ExecutionResult:
 
     # 參數驗證
     if not file_path or not isinstance(file_path, str):
-        raise ValueError("必須提供有效的 file_path 參數")
+        logger.warning(f"無效的 file_path 參數: {type(file_path)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 file_path 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     # find_content 和 find_signature 至少要有一個
     if not find_content and not find_signature:
-        raise ValueError("必須提供 find_content 或 find_signature 參數")
+        logger.warning("缺少 find_content 或 find_signature 參數")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供 find_content 或 find_signature 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if find_content and find_signature:
-        raise ValueError("find_content 和 find_signature 不能同時使用")
+        logger.warning("find_content 和 find_signature 不能同時使用")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="find_content 和 find_signature 不能同時使用",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if replace_with is None:
         replace_with = ""
@@ -108,7 +129,14 @@ async def handle_replace_block(args: dict[str, Any]) -> ExecutionResult:
         replace_with = str(replace_with)
 
     if len(replace_with) > MAX_INPUT_LENGTH:
-        raise ValueError(f"replace_with 超過最大長度限制 {MAX_INPUT_LENGTH} 字符")
+        logger.warning(f"replace_with 超過最大長度限制: {len(replace_with)} > {MAX_INPUT_LENGTH}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message=f"replace_with 超過最大長度限制 {MAX_INPUT_LENGTH} 字元",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     if not isinstance(occurrence, int) or occurrence < 1:
         occurrence = 1

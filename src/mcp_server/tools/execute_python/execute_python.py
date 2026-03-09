@@ -44,7 +44,14 @@ async def handle_execute_python(args: dict[str, Any]) -> ExecutionResult:
     code = args.get("code")
 
     if not code or not isinstance(code, str):
-        raise ValueError("必須提供有效的 code 參數")
+        logger.warning(f"無效的 code 參數: {type(code)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="必須提供有效的 code 參數",
+            returncode=-1,
+            execution_time="0.000s",
+        )
 
     timeout = args.get("timeout", MAX_EXECUTION_TIME)
     if not isinstance(timeout, int) or timeout < 1 or timeout > MAX_EXECUTION_TIME:
@@ -71,7 +78,14 @@ async def execute_python_file(code: str, timeout: int = MAX_EXECUTION_TIME) -> E
 
     try:
         if len(code) > MAX_INPUT_LENGTH:
-            raise ValueError(f"Code exceeds maximum length of {MAX_INPUT_LENGTH} characters")
+            logger.warning(f"程式碼超過最大長度限制: {len(code)} > {MAX_INPUT_LENGTH}")
+            return ExecutionResult(
+                success=False,
+                error_type="ValueError",
+                error_message=f"程式碼超過最大長度限制 {MAX_INPUT_LENGTH} 字元",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         temp_file = WORK_DIR / f"exec_{timestamp}.py"
