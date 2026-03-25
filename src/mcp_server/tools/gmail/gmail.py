@@ -9,10 +9,11 @@ from typing import Any
 
 from fastapi import Request
 
-from mcp_server.schemas import ExecutionResult
 from mcp_server.security import check_gmail_access
 from mcp_server.services.gmail_service import gmail_service
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

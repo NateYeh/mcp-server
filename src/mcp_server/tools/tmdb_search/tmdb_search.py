@@ -11,7 +11,6 @@ import logging
 from typing import Any
 
 from mcp_server.config import TMDB_API_KEY
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
 from mcp_server.tools.tmdb_search.modules import (
     MediaInfo,
@@ -19,6 +18,8 @@ from mcp_server.tools.tmdb_search.modules import (
     TMDBClient,
     format_results_list,
 )
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

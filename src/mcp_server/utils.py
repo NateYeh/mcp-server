@@ -7,7 +7,7 @@
 import logging
 from typing import Any
 
-from mcp_server.schemas import ExecutionResult
+from mcp_server.tools.schemas import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

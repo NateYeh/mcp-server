@@ -23,8 +23,9 @@ from mcp_server.config import (
     REMOTE_BROWSER_ENABLED,
     WORK_DIR,
 )
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

@@ -18,8 +18,9 @@ from mcp_server.config import (
     OLLAMA_WEB_SEARCH_URL,
     OLLAMA_WEB_TIMEOUT,
 )
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

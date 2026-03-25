@@ -20,8 +20,9 @@ from mcp_server.config import (
     MYSQL_PORT,
     MYSQL_USER,
 )
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

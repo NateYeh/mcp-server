@@ -106,10 +106,7 @@ else:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 修正工作目錄路徑，避免巢狀目錄問題
 _raw_work_dir = os.getenv("PYTHON_WORK_DIR", "workspace")
-if _raw_work_dir.startswith("./"):
-    WORK_DIR = (PROJECT_ROOT / _raw_work_dir[2:]).resolve()
-else:
-    WORK_DIR = Path(_raw_work_dir).resolve()
+WORK_DIR = (PROJECT_ROOT / _raw_work_dir[2:]).resolve() if _raw_work_dir.startswith("./") else Path(_raw_work_dir).resolve()
 
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 

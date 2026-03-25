@@ -11,8 +11,9 @@ import requests
 from mcp_server.base.data_structures import AIConfig
 from mcp_server.config import WORK_DIR
 from mcp_server.model.gemini_api_client import process_prompt
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

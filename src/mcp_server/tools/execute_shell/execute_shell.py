@@ -20,8 +20,9 @@ from mcp_server.config import (
     MAX_INPUT_LENGTH,
     MAX_OUTPUT_LENGTH,
 )
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

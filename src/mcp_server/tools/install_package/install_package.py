@@ -11,8 +11,9 @@ import traceback
 from typing import Any
 
 from mcp_server.config import DANGEROUS_PACKAGE_CHARS, MAX_EXECUTION_TIME, MAX_OUTPUT_LENGTH
-from mcp_server.schemas import ExecutionResult
 from mcp_server.tools.base import registry
+
+from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 

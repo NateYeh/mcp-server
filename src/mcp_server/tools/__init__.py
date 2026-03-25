@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 
 from mcp_server.tools.base import ToolDefinition, ToolHandler, ToolRegistry, registry
+from mcp_server.tools.schemas import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,10 @@ _discover_tools()
 logger.info(f"🔧 已載入 {registry.get_tool_count()} 個 Tool 模組")
 
 __all__ = [
+    # Core
     "registry",
     "ToolRegistry",
     "ToolDefinition",
     "ToolHandler",
+    "ExecutionResult",
 ]

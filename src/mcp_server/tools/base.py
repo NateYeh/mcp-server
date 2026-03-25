@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 
 from fastapi import Request
 
-from mcp_server.schemas import ExecutionResult
+from mcp_server.tools.schemas import ExecutionResult
 
 ToolHandler = Callable[..., Awaitable[ExecutionResult]]
 
