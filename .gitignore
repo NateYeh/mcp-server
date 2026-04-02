@@ -102,3 +102,5 @@ Thumbs.db
 docker-compose.yaml
 
 CLAUDE.md
+.claude/
+
