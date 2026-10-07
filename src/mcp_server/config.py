@@ -8,7 +8,6 @@ import logging
 import os
 import secrets
 import shutil
-import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -25,10 +24,6 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 ENV_PATH = PROJECT_ROOT / ".env"
 if ENV_PATH.exists():
     load_dotenv(ENV_PATH)
-
-# 將專案根目錄加入 sys.path，以便載入 natekit 等模組
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 認證設定 - 單一 AUTH_KEY

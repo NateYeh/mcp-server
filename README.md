@@ -32,7 +32,7 @@ cp .env.example .env             # 依需要填入 AUTH_KEY 等設定
 ```bash
 python -m mcp_server
 
-# 或使用啟動腳本（會先以開發模式安裝 natekit，再啟動服務）
+# 或使用啟動腳本（直接執行 python -m mcp_server）
 bash src/mcp_server/start.sh
 ```
 服務監聽位址由 `.env` 的 `MCP_HOST` / `MCP_PORT` 決定（預設 `http://0.0.0.0:8000`）。

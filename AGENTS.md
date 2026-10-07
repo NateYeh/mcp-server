@@ -30,7 +30,7 @@ mcp-server/
 │   │   ├── base.py            # ToolRegistry 單例與 @registry.register
 │   │   ├── schemas.py         # ExecutionResult（工具回傳格式）
 │   │   └── execute_shell/     # 目前唯一的工具
-│   └── start.sh               # 啟動腳本（先開發模式安裝 natekit，再啟動服務）
+│   └── start.sh               # 啟動腳本（安裝 mcp_server 後執行 python -m mcp_server）
 ├── docs/
 │   ├── ARCHITECTURE.md        # 詳細架構與開發範式
 │   └── SELF_HEALING_MEMO.md   # 故障排除備忘錄
