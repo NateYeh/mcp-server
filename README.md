@@ -1,7 +1,7 @@
 # NATE-MCP-SERVER v4.0.0
 
 NATE-MCP-SERVER 是一個基於 **Model Context Protocol (MCP)** 的工具伺服器，讓大語言模型
-（如 Claude Desktop）能安全地操作本地系統：目前提供 Linux Shell 命令執行能力。
+（如 Claude Code、Claude Desktop）能安全地操作本地系統：目前提供 Linux Shell 命令執行能力。
 
 ## ✨ 核心功能
 
@@ -47,11 +47,58 @@ bash src/mcp_server/start.sh
 > 未設定 `AUTH_KEY` 時，金鑰為隨機產生且只存在記憶體，**重啟後會變更**；
 > 建議將固定使用的金鑰寫入 `.env` 的 `AUTH_KEY`。
 
-### 4. 配置 Claude Desktop
+### 4. 連接客戶端
 
-Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（`command` / `args` / `env`），
-不支援直接填 URL；而本伺服器是 HTTP 服務（`/mcp`），因此需透過 stdio↔HTTP 橋接器
-[`mcp-remote`](https://www.npmjs.com/package/mcp-remote) 連接（需 Node.js 18+）。
+本伺服器是 HTTP 服務（`POST /mcp`），各客戶端的支援程度不同：
+
+| 客戶端 | 傳輸方式 | 設定方式 |
+|--------|----------|----------|
+| **Claude Code** | 原生 Streamable HTTP | 直接填 `type: "http"` + `url` + `headers`，**不需橋接** |
+| **Claude Desktop** | 設定檔僅 stdio | 需 [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) 橋接（Node.js 18+） |
+| 其他（Cursor / VS Code / Cline…） | 多數支援 HTTP | 欄位名稱各異，請查該客戶端文件 |
+
+> 建議優先用 **Claude Code**：原生 HTTP 免去 npx 啟動開銷、免安裝全域套件，也沒有橋接器版本維護問題。
+
+#### 4-1. Claude Code（原生 HTTP，建議）
+
+以 CLI 加入（`--scope user` 為所有專案可用）：
+
+```bash
+claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
+  --header "Authorization: Bearer <你的 AUTH_KEY>" --scope user
+```
+
+或直接寫入 JSON（`.mcp.json` 專案共用／`~/.claude.json` 個人所有專案）：
+
+```json
+{
+  "mcpServers": {
+    "nate-mcp": {
+      "type": "http",
+      "url": "http://127.0.0.1:8000/mcp",
+      "headers": { "Authorization": "Bearer <你的 AUTH_KEY>" }
+    }
+  }
+}
+```
+
+伺服器在另一台機器時，將 `url` 改為 `http://192.168.0.30:8000/mcp`。
+
+**注意事項**
+
+- `type` **必填**：只有 `url` 而無 `type` 的條目會被當成 stdio 而跳過（Claude Code 會提示
+  `has a "url" but no "type"`）；`"streamable-http"` 是同義別名。
+- 本機連線請用 `127.0.0.1` 而非 `localhost`（Node 可能先解析到 IPv6 `::1`，而本服務監聽 IPv4）。
+- 金鑰**別寫進會進版控的檔案**：`.mcp.json` 應改用 `"Authorization": "Bearer ${AUTH_KEY}"` 由環境變數帶入。
+  但 Claude Code 對部分憑證類變數名稱會**讀成空字串**（如 `ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、
+  `NPM_TOKEN` 等），若非清單內的名稱才會正常展開；不確定時先寫死值驗證，成功後再換變數。
+- 金鑰錯誤時 Claude Code 標記為 `✘ Failed`，**不會**退回 OAuth 流程；用 `claude mcp list` 或 `/mcp` 查狀態。
+- 純 `http://` + 靜態標頭不受限制；Claude Code 僅對 **OAuth token 端點**強制 HTTPS 或 localhost。
+
+#### 4-2. Claude Desktop（stdio 橋接）
+
+`claude_desktop_config.json` **只接受 stdio 子行程**（`command` / `args` / `env`），不支援直接填 URL，
+因此需透過 [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) 轉接。
 
 設定檔位置：
 
@@ -62,7 +109,7 @@ Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（
 
 > 檔案不存在時，先在 Claude Desktop 的 `Settings → Developer` 開啟。
 
-#### 4-1. 本機（Claude Desktop 與伺服器同一台機器）
+##### 本機（Claude Desktop 與伺服器同一台機器）
 
 端點用 `127.0.0.1`，**不要用 `localhost`**（Node 可能先解析到 IPv6 `::1` 而連不上 IPv4 監聽）。
 
@@ -85,7 +132,7 @@ Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（
 }
 ```
 
-#### 4-2. 區網／遠端（伺服器在另一台機器，例如 192.168.0.30）
+##### 區網／遠端（伺服器在另一台機器，例如 192.168.0.30）
 
 ```json
 {
@@ -106,8 +153,10 @@ Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（
 }
 ```
 
-#### 注意事項
+##### 注意事項
 
+- ⚠️ **切勿把 4-1 的 `"url"` 寫法貼進 `claude_desktop_config.json`**：Desktop 不支援遠端條目，
+  且已知會**靜默刪除整個 `mcpServers` 區段**（造成既有設定遺失，見 anthropics/claude-code#37286）。
 - `http://` 端點**必須加 `--allow-http`**，否則 mcp-remote 會拒絕明文連線（僅在可信任網段使用）。
 - **Windows**：`args` 內的空格會被截斷（Claude Desktop 已知問題），因此憑證務必用 `env` 傳入，
   並寫成 `Authorization:${AUTH_HEADER}`（冒號前後不留空格）。上面範例即為此寫法，macOS/Linux 同樣可用。
@@ -145,7 +194,7 @@ curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
 
 | 變數 | 說明 |
 |------|------|
-| `AUTH_KEY` | 唯一認證金鑰。留空時每次啟動自動產生隨機金鑰並顯示於 console。 |
+| `AUTH_KEY` | 唯一認證金鑰。留空時每次啟動自動產生隨機金鑰並顯示於 console（重啟即變更）。 |
 | `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:8000`）。 |
 | `PYTHON_WORK_DIR` | 工作目錄（服務啟動時清空，預設 `./workspace`）。 |
 | `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設 `.`）。 |

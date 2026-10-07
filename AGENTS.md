@@ -5,7 +5,8 @@
 ## 專案概述
 
 MCP (Model Context Protocol) Server：以 FastAPI 提供 `/mcp` HTTP 端點，讓 LLM 客戶端
-（如 Claude Desktop）能呼叫本機工具。目前僅提供 `execute_shell`（Linux Shell 命令執行）。
+（如 Claude Code、Claude Desktop）能呼叫本機工具。目前僅提供 `execute_shell`（Linux Shell 命令執行）。
+客戶端連接方式（Claude Code 原生 HTTP；Claude Desktop 需 mcp-remote 橋接）詳見 README 第 4 節。
 
 - 版本：4.0.0
 - Python：>= 3.10
