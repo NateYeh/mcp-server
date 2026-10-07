@@ -85,7 +85,7 @@ Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（
 }
 ```
 
-#### 4-2. 區網／遠端（伺服器在另一台機器，例如 192.168.77.140）
+#### 4-2. 區網／遠端（伺服器在另一台機器，例如 192.168.0.30）
 
 ```json
 {
@@ -95,7 +95,7 @@ Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（
       "args": [
         "-y",
         "mcp-remote@latest",
-        "http://192.168.77.140:8000/mcp",
+        "http://192.168.0.30:8000/mcp",
         "--transport", "http-only",
         "--allow-http",
         "--header", "Authorization:${AUTH_HEADER}"
