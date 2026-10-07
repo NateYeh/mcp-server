@@ -77,7 +77,7 @@ mcp-server/
 | 逾時 | 上限固定 300s（`MAX_TIMEOUT_LIMIT`），`MCP_EXEC_TIMEOUT` 超過上限會被夾制並記錄警告 |
 | 輸出 | **邊讀邊截斷**：stdout / stderr 各保留 `MCP_MAX_OUTPUT` 位元組（預設 1,000,000），超過即終止整個進程組並回 `OutputLimitError`（不會先把無限輸出讀進記憶體） |
 | 輸入 | 命令長度上限 `MCP_MAX_INPUT` |
-| 工作目錄 | `MCP_SHELL_CWD` 不存在時直接回錯誤，**不自動建立目錄** |
+| 工作目錄 | 工具 `cwd` 參數（選填）指定執行目錄，相對路徑以 `MCP_SHELL_CWD` 為基準；目錄不存在時直接回錯誤，**不自動建立目錄** |
 | 進程 | `start_new_session=True` 建立新進程組；逾時或輸出超限時以 `killpg(SIGKILL)` 終止整組（含子孫行程） |
 
 ## 執行與驗證

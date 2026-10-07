@@ -31,6 +31,27 @@ logger = logging.getLogger(__name__)
 _READ_CHUNK_SIZE = 65536
 
 
+def _resolve_working_dir(value: str | None) -> Path:
+    """
+    解析命令的執行目錄
+
+    None 或空白字串代表使用 DEFAULT_SHELL_CWD；相對路徑以 DEFAULT_SHELL_CWD 為基準。
+
+    Args:
+        value: 客戶端傳入的 cwd 參數
+
+    Returns:
+        Path: 絕對路徑（不保證存在，由呼叫端檢查）
+    """
+    if value is None or not value.strip():
+        return DEFAULT_SHELL_CWD
+
+    path = Path(value.strip()).expanduser()
+    if not path.is_absolute():
+        path = DEFAULT_SHELL_CWD / path
+    return path.resolve()
+
+
 def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     """
     終止子行程所屬的整個進程組
@@ -88,6 +109,10 @@ async def _read_stream_capped(stream: asyncio.StreamReader, limit: int, on_overf
                 "maximum": MAX_TIMEOUT_LIMIT,
                 "description": f"執行超時時間（秒），預設 {MAX_EXECUTION_TIME} 秒，最大 {MAX_TIMEOUT_LIMIT} 秒",
             },
+            "cwd": {
+                "type": "string",
+                "description": f"命令的執行目錄（選填）。預設為 {DEFAULT_SHELL_CWD}；可給絕對路徑或相對於預設目錄的路徑。目錄不存在時直接回錯誤。",
+            },
         },
         "required": ["command"],
     },
@@ -112,19 +137,30 @@ async def handle_execute_shell(args: dict[str, Any]) -> ExecutionResult:
             logger.warning(f"timeout 參數不合法（{timeout!r}），改用預設值 {MAX_EXECUTION_TIME}s")
         timeout = MAX_EXECUTION_TIME
 
+    raw_cwd = args.get("cwd")
+    if raw_cwd is not None and not isinstance(raw_cwd, str):
+        logger.warning(f"cwd 參數型別不合法: {type(raw_cwd)}")
+        return ExecutionResult(
+            success=False,
+            error_type="ValueError",
+            error_message="cwd 參數必須是字串（目錄路徑）",
+            returncode=-1,
+            execution_time="0.000s",
+        )
+
     logger.info(f"執行 Shell 命令 ({len(command)} 字符)")
 
-    return await execute_shell_command(command, timeout)
+    return await execute_shell_command(command, timeout, raw_cwd)
 
 
-async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME, working_dir: Path | None = None) -> ExecutionResult:
+async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME, cwd: str | None = None) -> ExecutionResult:
     """
     執行 Linux Shell 命令。
 
     Args:
         command: shell 命令
         timeout: 執行超時秒數
-        working_dir: 工作目錄（預設為 DEFAULT_SHELL_CWD）
+        cwd: 執行目錄（None 或空字串表示使用 DEFAULT_SHELL_CWD；相對路徑以 DEFAULT_SHELL_CWD 為基準）
 
     Returns:
         ExecutionResult: 執行結果
@@ -142,15 +178,15 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
                 execution_time="0.000s",
             )
 
-        cwd = str(working_dir) if working_dir else str(DEFAULT_SHELL_CWD)
+        cwd_path = _resolve_working_dir(cwd)
 
         # 不自動建立目錄，避免在非預期位置產生檔案系統變更
-        if not Path(cwd).is_dir():
-            logger.warning(f"工作目錄不存在或非目錄: {cwd}")
+        if not cwd_path.is_dir():
+            logger.warning(f"工作目錄不存在或非目錄: {cwd_path}")
             return ExecutionResult(
                 success=False,
                 error_type="FileNotFoundError",
-                error_message=f"工作目錄不存在: {cwd}",
+                error_message=f"工作目錄不存在: {cwd_path}",
                 returncode=-1,
                 execution_time="0.000s",
             )
@@ -161,7 +197,7 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=cwd,
+            cwd=str(cwd_path),
             executable="/bin/bash",
             start_new_session=True,  # 建立新進程組，逾時可整組終止（等價 os.setsid 且執行緒安全）
         )
@@ -211,7 +247,7 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
                 stderr=f"Execution timeout after {timeout}s",
                 returncode=proc.returncode if proc.returncode is not None else -1,
                 execution_time=f">{timeout}s",
-                metadata={"command": command},
+                metadata={"command": command, "cwd": str(cwd_path)},
             )
 
         if truncated:
@@ -226,7 +262,7 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
                 stderr=stderr_text,
                 returncode=proc.returncode if proc.returncode is not None else -1,
                 execution_time=execution_time,
-                metadata={"command": command},
+                metadata={"command": command, "cwd": str(cwd_path)},
             )
 
         return ExecutionResult(
@@ -235,7 +271,7 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
             stderr=stderr_text,
             returncode=proc.returncode or 0,
             execution_time=execution_time,
-            metadata={"command": command},
+            metadata={"command": command, "cwd": str(cwd_path)},
         )
 
     except Exception as e:

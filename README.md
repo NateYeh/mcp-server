@@ -5,7 +5,7 @@ NATE-MCP-SERVER 是一個基於 **Model Context Protocol (MCP)** 的工具伺服
 
 ## ✨ 核心功能
 
-- 💻 **Shell 執行**: `execute_shell` 直接執行 Linux Shell 命令（bash），支援管道、重定向、環境變數。
+- 💻 **Shell 執行**: `execute_shell` 直接執行 Linux Shell 命令（bash），支援管道、重定向、環境變數，並可用 `cwd` 參數指定執行目錄（免在命令中自行 `cd` 與 quote）。
 - ⏱️ **輸出與逾時保護**: 輸出邊讀邊截斷（預設 1,000,000 字元），超過即終止整個進程組；逾時上限固定 300 秒。
 - 🔐 **單一金鑰認證 + 失敗次數限制**: 以 `AUTH_KEY` 保護 `/mcp` 端點；未設定時每次啟動自動產生隨機金鑰並顯示於 console；同一來源 60 秒內失敗 10 次即暫時拒絕。
 - 🧩 **模組化工具架構**: 工具置於 `tools/` 下會自動被發現並註冊，易於擴充。
@@ -198,6 +198,12 @@ curl -s -X POST http://127.0.0.1:8000/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
        "params":{"name":"execute_shell","arguments":{"command":"ls -la"}}}'
 
+# 指定執行目錄（選填；相對路徑以 MCP_SHELL_CWD 為基準，預設為專案根目錄）
+curl -s -X POST http://127.0.0.1:8000/mcp \
+  -H "Authorization: Bearer $AUTH_KEY" -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
+       "params":{"name":"execute_shell","arguments":{"command":"git status -s","cwd":"apps/ai_novel","timeout":60}}}'
+
 # 健康檢查
 curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
 ```
@@ -212,7 +218,7 @@ curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
 | `AUTH_KEY` | 唯一認證金鑰。留空時每次啟動自動產生隨機金鑰並顯示於 console（重啟即變更）。 |
 | `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:8000`）。建議僅本機使用時設為 `127.0.0.1`。 |
 | `PYTHON_WORK_DIR` | 工作目錄（服務啟動時建立並清空，預設 `./workspace`）。 |
-| `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設專案根目錄；不存在時直接回錯，不自動建立）。 |
+| `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設專案根目錄；不存在時直接回錯，不自動建立）。工具的 `cwd` 參數以相對路徑給值時，亦以此目錄為基準。 |
 | `MCP_EXEC_TIMEOUT` | 命令執行逾時秒數（預設 300；**上限固定 300**，超過會被夾制並記錄警告）。 |
 | `MCP_MAX_INPUT` | 單次命令長度上限（預設 1000000 字元）。 |
 | `MCP_MAX_OUTPUT` | 單次輸出上限（預設 1000000 字元，stdout / stderr 各自計算）；**邊讀邊截斷**，超過即終止命令並回報 `OutputLimitError`。 |
