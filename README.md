@@ -48,20 +48,78 @@ bash src/mcp_server/start.sh
 > 建議將固定使用的金鑰寫入 `.env` 的 `AUTH_KEY`。
 
 ### 4. 配置 Claude Desktop
-修改 `config.json`（通常位於 `%AppData%\Claude\config.json` 或
-`~/Library/Application Support/Claude/config.json`）：
+
+Claude Desktop 的 `claude_desktop_config.json` **只接受 stdio 子行程**（`command` / `args` / `env`），
+不支援直接填 URL；而本伺服器是 HTTP 服務（`/mcp`），因此需透過 stdio↔HTTP 橋接器
+[`mcp-remote`](https://www.npmjs.com/package/mcp-remote) 連接（需 Node.js 18+）。
+
+設定檔位置：
+
+| 平台 | 路徑 |
+|------|------|
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+> 檔案不存在時，先在 Claude Desktop 的 `Settings → Developer` 開啟。
+
+#### 4-1. 本機（Claude Desktop 與伺服器同一台機器）
+
+端點用 `127.0.0.1`，**不要用 `localhost`**（Node 可能先解析到 IPv6 `::1` 而連不上 IPv4 監聽）。
 
 ```json
 {
   "mcpServers": {
-    "Nate-MCP": {
-      "command": "/absolute/path/to/mcp-server/.venv/bin/python",
-      "args": ["-m", "mcp_server"],
-      "cwd": "/absolute/path/to/mcp-server"
+    "nate-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "http://127.0.0.1:8000/mcp",
+        "--transport", "http-only",
+        "--allow-http",
+        "--header", "Authorization:${AUTH_HEADER}"
+      ],
+      "env": { "AUTH_HEADER": "Bearer <你的 AUTH_KEY>" }
     }
   }
 }
 ```
+
+#### 4-2. 區網／遠端（伺服器在另一台機器，例如 192.168.77.140）
+
+```json
+{
+  "mcpServers": {
+    "nate-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "http://192.168.77.140:8000/mcp",
+        "--transport", "http-only",
+        "--allow-http",
+        "--header", "Authorization:${AUTH_HEADER}"
+      ],
+      "env": { "AUTH_HEADER": "Bearer <你的 AUTH_KEY>" }
+    }
+  }
+}
+```
+
+#### 注意事項
+
+- `http://` 端點**必須加 `--allow-http`**，否則 mcp-remote 會拒絕明文連線（僅在可信任網段使用）。
+- **Windows**：`args` 內的空格會被截斷（Claude Desktop 已知問題），因此憑證務必用 `env` 傳入，
+  並寫成 `Authorization:${AUTH_HEADER}`（冒號前後不留空格）。上面範例即為此寫法，macOS/Linux 同樣可用。
+- 憑證會出現在 process 清單（`ps`）中；若在意，可改用 `--header-file /path/to/headers.txt`，
+  檔案內容一行 `Authorization: Bearer <token>`。
+- 修改設定後必須**完整結束並重新啟動** Claude Desktop（關閉視窗不算）。
+- 驗證：`Settings → Developer` 查看伺服器是否為 connected，或看日誌
+  （macOS：`~/Library/Logs/Claude/mcp*.log`、Windows：`%LOCALAPPDATA%\Claude\Logs\mcp.log`）。
+- 本伺服器**不提供 stdio transport**，因此無法用 `"command": "python", "args": ["-m", "mcp_server"]`
+  直接啟動（客戶端會收到日誌而非 JSON-RPC）；若希望 Desktop 直接以 stdio 拉起，需在伺服器端另新增 stdio 模式。
+- 若要從公網給 claude.ai / Claude Desktop 的「自訂連接器（Custom Connector）」使用，該連線是由
+  Anthropic 雲端發起，伺服器須有公開 HTTPS 端點並開放其 IP 範圍，不適用於內網部署。
 
 ## 🔌 API 使用
 
