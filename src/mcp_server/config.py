@@ -33,23 +33,25 @@ if str(PROJECT_ROOT) not in sys.path:
     logger.info(f"📁 已將專案根目錄加入 sys.path: {PROJECT_ROOT}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 認證設定 - 多 API Key 權限管理
+# 認證設定 - 單一 AUTH_KEY
 # ═══════════════════════════════════════════════════════════════════════════════
-# API_KEYS 結構:
-# {
-#     "api_key": {
-#         "tools": ["*"] 或 ["tool1", "tool2", ...],  # 允許的 tools
-#         "gmail_account": "email@gmail.com"          # 綁定的 Gmail 帳號（可選）
-#     }
-# }
-# ["*"] 表示允許所有 tools
-# gmail_account 綁定後，該 API Key 只能使用綁定的 Gmail 帳號
-#
-# 設定方式：請在 .env 中設定 MCP_API_KEYS (Base64 編碼的 JSON 陣列)
+# 認證金鑰來源為環境變數 AUTH_KEY；未設定時於每次啟動隨機產生（僅存在於記憶體，
+# 重啟後會變更）。產生的金鑰由 __main__.py 於服務啟動時顯示。
+
+AUTH_KEY = os.getenv("AUTH_KEY", "").strip()
+AUTH_KEY_GENERATED = not AUTH_KEY
+
+if AUTH_KEY_GENERATED:
+    import secrets
+
+    AUTH_KEY = secrets.token_urlsafe(32)
+    logger.warning("⚠️ 未設定 AUTH_KEY，本次啟動已自動產生隨機金鑰（重啟後會變更）")
+else:
+    logger.info("🔐 已從環境變數 AUTH_KEY 載入認證金鑰")
 
 
 class APIKeyManager:
-    """API Keys 管理類別"""
+    """各外部服務 API Key 管理類別"""
 
     @staticmethod
     def _load_json_env(key: str, default: Any = None) -> Any:
@@ -68,14 +70,6 @@ class APIKeyManager:
                 return default
 
     @classmethod
-    def get_api_keys(cls) -> dict[str, dict]:
-        """取得 MCP API Keys"""
-        raw = cls._load_json_env("MCP_API_KEYS", [])
-        if not raw:
-            return {}
-        return {item["api_key"]: {k: v for k, v in item.items() if k != "api_key"} for item in raw}
-
-    @classmethod
     def get_gemini_keys(cls) -> list[dict]:
         """取得 Gemini API Keys"""
         return cls._load_json_env("GEMINI_API_KEYS", [])
@@ -90,16 +84,6 @@ class APIKeyManager:
         """取得 Ollama API Key"""
         return os.getenv("OLLAMA_API_KEY", "")
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 認證設定
-# ═══════════════════════════════════════════════════════════════════════════════
-API_KEYS = APIKeyManager.get_api_keys()
-
-if API_KEYS:
-    logger.info(f"🔐 API Key 認證已啟用，已設定 {len(API_KEYS)} 組 Key")
-else:
-    logger.warning("⚠️ 未設定 API_KEYS，API Key 認證已停用（開發模式）")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 路徑設定

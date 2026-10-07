@@ -6,11 +6,12 @@
 專案採用 `src-layout` 結構，主要代碼位於 `src/mcp_server/`。
 
 - **`app.py`**: 伺服器入口。負責 FastAPI 路由初始化、MCP 協議處理與工具分發邏輯。
-- **`config.py`**: 全域配置中心。包含 API Key 定義、超時設定、安全黑名單（DANGEROUS_PATTERNS）。
-- **`security.py`**: 安全驗證層。處理 Bearer Token、Tool 權限過濾 (Wildcard 支援) 與指令安全檢查。
+- **`config.py`**: 全域配置中心。包含認證金錀（`AUTH_KEY`）、逾時設定、安全黑名單（DANGEROUS_PATTERNS）。
+- **`security.py`**: 安全驗證層。以常數時間比較驗證 Bearer Token（單一 `AUTH_KEY`）。
 - **`tools/`**: **【核心擴展區】**
     -   `base.py`: 提供 `ToolRegistry` 單例與 `@registry.register` 裝飾器。
     -   `__init__.py`: 負責自動遍歷子目錄並註冊所有工具模組。
+    -   `execute_shell/`: 目前唯一的工具（Linux Shell 命令執行）。
 - **`schemas.py`**: 統一的數據交換模型，所有 Tool 必須返回 `ExecutionResult`。
 - **`workspace/`**: 執行環境隔離區域，所有 Shell/Python 工具的執行起點。
 
@@ -39,7 +40,7 @@
     -   在 `tools/__init__.py` 加入 `from mcp_server.tools.my_tool import *`
 
 ## 🛡️ 安全機制規範
--   **權限控制**: 存取 `config.API_KEYS` 來檢查當前 Key 的授權範圍。
+-   **認證**: 僅接受 `Authorization: Bearer <AUTH_KEY>`，驗證邏輯在 `security.py`（`hmac.compare_digest`）。
 -   **黑名單**: `execute_shell` 必須經過 `security.py` 的樣式檢查。
 -   **資源限制**: 所有 Tool 應尊重 `MAX_EXECUTION_TIME` 與 `MAX_OUTPUT_LENGTH`。
 

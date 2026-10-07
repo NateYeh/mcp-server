@@ -4,11 +4,9 @@ NATE-MCP-SERVER 是一個基於 **Model Context Protocol (MCP)** 的強力工具
 
 ## ✨ 核心功能
 
-- 💻 **多語言執行**: 支援 Python 代碼、Shell 指令與 MySQL 數據庫操作。
-- 📁 **進階檔案操作**: 讀寫檔案、精準行替換，以及獨家的「區塊簽名替換」功能（大幅提高代碼修改準確度）。
-- 🌐 **網路增強**: 整合 Google 搜尋、网页抓取 (Ollama Web) 與全功能瀏覽器自動化 (Playwright)。
-- 📧 **服務整合**: Gmail 郵件管理、TMDB 電影資料查詢、圖片 AI 辨識。
-- 🛡️ **安全防護**: 內建黑名單過濾機制與彈性的 API Key 權限分級管理。
+- 💻 **Shell 執行**: 直接執行 Linux Shell 命令（bash），支援管道、重定向與環境變數。
+- 🔐 **單一金錀認證**: 以 `AUTH_KEY` 保護 `/mcp` 端點；未設定時自動產生隨機金錀並於啟動時顯示。
+- 🧩 **模組化工具架構**: 工具放在 `tools/` 下自動發現註冊，易於擴充。
 
 ## 🚀 快速開始
 
@@ -39,6 +37,17 @@ bash src/mcp_server/start.sh
 ```
 服務預設監聽 `http://0.0.0.0:8000`（由 `.env` 的 `MCP_HOST` / `MCP_PORT` 決定）。
 
+啟動時 console 會顯示本次使用的認證金錀：
+
+```
+════════════════════════════════════════════════════════════════════════
+🔑 AUTH_KEY = <本次啟動使用的金錀>
+════════════════════════════════════════════════════════════════════════
+```
+
+> 未設定 `AUTH_KEY` 時，金錀為隨機產生且只存在記憶體，**重啟後會變更**；
+> 建議將長期使用的金錀寫入 `.env` 的 `AUTH_KEY`。
+
 ### 4. 配置 Claude Desktop
 修改你的 `config.json` (通常位於 `%AppData%\Claude\config.json` 或 `~/Library/Application Support/Claude/config.json`)：
 ```json
@@ -58,10 +67,10 @@ bash src/mcp_server/start.sh
 
 | 變數 | 說明 |
 |------|------|
-| `MCP_API_KEYS` | JSON 格式，定義多組 API Key 及其對應的 Tool 權限。 |
-| `PYTHON_WORK_DIR` | Python 隔離執行的工作目錄。 |
-| `PLAYWRIGHT_CDP_ENDPOINT`| 遠端瀏覽器 CDP 連接點。 |
-| `GMAIL_ACCOUNTS` | Gmail OAuth 憑證配置。 |
+| `AUTH_KEY` | 唯一認證金錀（`Authorization: Bearer <AUTH_KEY>`）。留空時每次啟動自動產生隨機金錀並顯示於 console。 |
+| `PYTHON_WORK_DIR` | 工作目錄（`execute_shell` 產出檔案的隔離區）。 |
+| `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄。 |
+| `MCP_EXEC_TIMEOUT` | 命令執行逾時秒數（預設 300）。 |
 
 > 詳細配置說明請參閱內部技術文檔或 `.env.example`。
 

@@ -12,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from mcp_server.config import (
-    API_KEYS,
     MAX_EXECUTION_TIME,
     MCP_HOST,
     MCP_PORT,
@@ -169,7 +168,7 @@ def _handle_initialize() -> dict:
             "name": "NATE-MCP-SERVER",
             "version": "4.0.0",
             "architecture": "modular",
-            "features": ["python_execution", "package_management", "version_query", "shell_execution"],
+            "features": ["shell_execution"],
         },
     }
 
@@ -263,12 +262,11 @@ async def mcp_get(req: Request) -> dict:
         "protocol": "MCP 2024-11-05",
         "version": "4.0.0",
         "architecture": "modular",
-        "features": ["python_execution", "package_management", "version_query", "shell_execution"],
+        "features": ["shell_execution"],
         "tools_loaded": registry.get_tool_count(),
         "security": {
-            "api_key_required": bool(API_KEYS),
-            "api_keys_count": len(API_KEYS) if API_KEYS else 0,
-            "auth_method": "Authorization: Bearer <token>" if API_KEYS else "None (Development Mode)",
+            "api_key_required": True,
+            "auth_method": "Authorization: Bearer <AUTH_KEY>",
         },
         "python": version_info,
         "config": {"work_directory": str(WORK_DIR.absolute()), "python_timeout": MAX_EXECUTION_TIME, "max_output_length": 100000},

@@ -10,7 +10,8 @@ import uvicorn
 
 from mcp_server.base.logging_config import setup_logging
 from mcp_server.config import (
-    API_KEYS,
+    AUTH_KEY,
+    AUTH_KEY_GENERATED,
     GEMINI_API_KEYS,
     GEMINI_PAY_KEY,
     GEMINI_PROXY_URL,
@@ -28,6 +29,7 @@ def main():
     """主函式"""
     # 設定日誌
     import logging
+
     setup_logging(file_log_level=logging.INFO)
 
     # 清理工作目錄
@@ -42,8 +44,6 @@ def main():
     )
 
     # 取得 app 實例
-    import logging
-
     from mcp_server.app import app
 
     logger = logging.getLogger(__name__)
@@ -53,10 +53,13 @@ def main():
     logger.info(f"⏱️ 執行超時: {MAX_EXECUTION_TIME}s")
     logger.info(f"🔧 已載入 {registry.get_tool_count()} 個 Tools")
 
-    if API_KEYS:
-        logger.info(f"🔐 API Key 認證: 已啟用，共 {len(API_KEYS)} 組 Key")
+    if AUTH_KEY_GENERATED:
+        logger.warning("🔑 未設定 AUTH_KEY，已自動產生隨機金鑰（僅存於記憶體，重啟後會變更）")
     else:
-        logger.warning("⚠️ API Key 認證: 已停用（開發模式）")
+        logger.info("🔐 認證金鑰來源：環境變數 AUTH_KEY")
+    logger.info("═" * 72)
+    logger.info(f"🔑 AUTH_KEY = {AUTH_KEY}")
+    logger.info("═" * 72)
 
     # 啟動伺服器
     uvicorn.run(app, host="0.0.0.0", port=MCP_PORT)
