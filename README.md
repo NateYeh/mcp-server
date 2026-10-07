@@ -6,7 +6,8 @@ NATE-MCP-SERVER 是一個基於 **Model Context Protocol (MCP)** 的工具伺服
 ## ✨ 核心功能
 
 - 💻 **Shell 執行**: `execute_shell` 直接執行 Linux Shell 命令（bash），支援管道、重定向、環境變數。
-- 🔐 **單一金鑰認證**: 以 `AUTH_KEY` 保護 `/mcp` 端點；未設定時每次啟動自動產生隨機金鑰並顯示於 console。
+- ⏱️ **輸出與逾時保護**: 輸出邊讀邊截斷（預設 1,000,000 字元），超過即終止整個進程組；逾時上限固定 300 秒。
+- 🔐 **單一金鑰認證 + 失敗次數限制**: 以 `AUTH_KEY` 保護 `/mcp` 端點；未設定時每次啟動自動產生隨機金鑰並顯示於 console；同一來源 60 秒內失敗 10 次即暫時拒絕。
 - 🧩 **模組化工具架構**: 工具置於 `tools/` 下會自動被發現並註冊，易於擴充。
 - 📝 **統一日誌**: console 彩色輸出 + `logs/mcp_server.log` 檔案輪替。
 
@@ -170,6 +171,17 @@ claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
 - 若要從公網給 claude.ai / Claude Desktop 的「自訂連接器（Custom Connector）」使用，該連線是由
   Anthropic 雲端發起，伺服器須有公開 HTTPS 端點並開放其 IP 範圍，不適用於內網部署。
 
+## 🔒 安全提醒
+
+- 本服務的設計目的就是執行任意 shell，**唯一的存取控制是 `AUTH_KEY`**（加上監聽位址）。
+  服務刻意不提供命令黑名單——子字串比對可被引號、變數、`$IFS` 等方式繞過，只會造成錯誤的安全感。
+- 所以 `AUTH_KEY` 等同於該機器上的 shell 權限：
+  - 只在可信任網段使用；純本機使用建議設 `MCP_HOST=127.0.0.1`。
+  - 不要寫進版控（寫法見 4-1 的 `${AUTH_KEY}`）。
+  - 曾出現在對話、截圖或日誌中的金鑰請直接輪換（改環境變數後重啟服務）。
+- 認證失敗有速率限制：同一來源 IP 於 60 秒內失敗 10 次即回 `429`。
+- 日誌不會記錄金鑰本身（格式錯誤時僅記錄 scheme）。
+
 ## 🔌 API 使用
 
 所有請求需帶 `Authorization: Bearer <AUTH_KEY>`，並以 `POST /mcp` 發送 JSON-RPC。
@@ -190,17 +202,22 @@ curl -s -X POST http://127.0.0.1:8000/mcp \
 curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
 ```
 
+> 連線後客戶端會發送 `prompts/list`、`resources/list` 等 discovery 請求，本服務一律回傳空清單（非錯誤），
+> 避免客戶端記錄無意義的錯誤。JSON-RPC 通知（無 `id`）則回 `202 Accepted` 且無 body。
+
 ## ⚙️ 環境變數配置摘要
 
 | 變數 | 說明 |
 |------|------|
 | `AUTH_KEY` | 唯一認證金鑰。留空時每次啟動自動產生隨機金鑰並顯示於 console（重啟即變更）。 |
-| `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:8000`）。 |
-| `PYTHON_WORK_DIR` | 工作目錄（服務啟動時清空，預設 `./workspace`）。 |
-| `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設 `.`）。 |
-| `MCP_EXEC_TIMEOUT` | 命令執行逾時秒數（預設 300，上限亦為 300）。 |
-| `MCP_MAX_INPUT` / `MCP_MAX_OUTPUT` | 單次輸入／輸出字元數上限（預設 1000000）。 |
+| `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:8000`）。建議僅本機使用時設為 `127.0.0.1`。 |
+| `PYTHON_WORK_DIR` | 工作目錄（服務啟動時建立並清空，預設 `./workspace`）。 |
+| `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設專案根目錄；不存在時直接回錯，不自動建立）。 |
+| `MCP_EXEC_TIMEOUT` | 命令執行逾時秒數（預設 300；**上限固定 300**，超過會被夾制並記錄警告）。 |
+| `MCP_MAX_INPUT` | 單次命令長度上限（預設 1000000 字元）。 |
+| `MCP_MAX_OUTPUT` | 單次輸出上限（預設 1000000 字元，stdout / stderr 各自計算）；**邊讀邊截斷**，超過即終止命令並回報 `OutputLimitError`。 |
 
+> 相對路徑（`PYTHON_WORK_DIR`、`MCP_SHELL_CWD`）一律以**專案根目錄**為基準，不受啟動時的工作目錄影響。
 > 完整說明請參閱 `.env.example`。
 
 ## 🧰 開發

@@ -1,5 +1,5 @@
 """
-NATE-MCP-SERVER v4.0.0
+NATE-MCP-SERVER
 
 MCP (Model Context Protocol) Server：模組化 Tool 架構，Tool 定義分散到獨立檔案中。
 """
@@ -9,30 +9,29 @@ import platform
 import time
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from mcp_server import __version__
 from mcp_server.base.logging_config import setup_logging
 from mcp_server.config import (
     MAX_EXECUTION_TIME,
     MAX_OUTPUT_LENGTH,
-    MCP_HOST,
-    MCP_PORT,
     WORK_DIR,
     cleanup_work_directory,
 )
 from mcp_server.schemas import MCPError
 from mcp_server.security import verify_api_key
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 關鍵：載入所有 Tools（透過 tools/__init__.py 自動註冊）
-# ═══════════════════════════════════════════════════════════════════════════════
 from mcp_server.tools import registry
 from mcp_server.utils import format_tool_result
 
 logger = logging.getLogger(__name__)
+
+# 本伺服器對客戶端提供的工具使用說明（Claude Code 的 tool search 會參考此欄位）
+SERVER_INSTRUCTIONS = (
+    "本伺服器提供在本機執行 Linux Shell 命令的能力（工具：execute_shell）。"
+    "當需要執行系統命令、檔案操作、查詢系統狀態或文字處理時，請使用 execute_shell。"
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -43,13 +42,13 @@ async def lifespan(app: FastAPI):
     """
     FastAPI Lifespan 管理器
 
-    啟動時：初始化日誌、清理工作目錄
+    啟動時：初始化日誌（若尚未設定）、清理工作目錄
     """
-    # 初始化日誌系統
-    setup_logging()
-    logger.info("🚀 MCP 伺服器初始化中...")
+    # 透過 python -m mcp_server 啟動時，日誌已由 __main__ 設定，不重複建立 handler
+    if not logging.getLogger().handlers:
+        setup_logging()
+        logger.info("🚀 MCP 伺服器初始化中...")
 
-    # 清理工作目錄
     cleanup_work_directory()
 
     yield  # FastAPI 運行中
@@ -60,12 +59,11 @@ async def lifespan(app: FastAPI):
 # ═══════════════════════════════════════════════════════════════════════════════
 app = FastAPI(
     title="NATE-MCP-SERVER",
-    description="MCP Server with Modular Tool Architecture (v4.0.0)",
-    version="4.0.0",
+    description="MCP Server with Modular Tool Architecture",
+    version=__version__,
     lifespan=lifespan,
 )
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HTTP 異常處理
@@ -87,7 +85,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(MCPError)
 async def mcp_exception_handler(request: Request, exc: MCPError):
-    """處理 MCPError 異常"""
+    """處理 MCPError 異常（未在 mcp_endpoint 內攔截時的備援）"""
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"jsonrpc": "2.0", "id": None, "error": {"code": exc.code, "message": exc.message, "data": exc.data}})
 
 
@@ -128,10 +126,19 @@ async def mcp_endpoint(req: Request) -> dict | Response:
     try:
         if method == "initialize":
             result = _handle_initialize()
+        elif method == "ping":
+            result = {}
         elif method == "tools/list":
             result = _handle_tools_list()
         elif method == "tools/call":
             result = await _handle_tools_call(body, req)
+        elif method == "prompts/list":
+            # 本伺服器未實作 prompts；部分客戶端仍會發送 discovery 請求，回空清單避免其記錄錯誤
+            result = {"prompts": []}
+        elif method == "resources/list":
+            result = {"resources": []}
+        elif method == "resources/templates/list":
+            result = {"resourceTemplates": []}
         else:
             raise MCPError(-32601, f"Method not found: {method}")
 
@@ -152,12 +159,8 @@ def _handle_initialize() -> dict:
     return {
         "protocolVersion": "2024-11-05",
         "capabilities": {"tools": {}},
-        "serverInfo": {
-            "name": "NATE-MCP-SERVER",
-            "version": "4.0.0",
-            "architecture": "modular",
-            "features": ["shell_execution"],
-        },
+        "serverInfo": {"name": "NATE-MCP-SERVER", "version": __version__},
+        "instructions": SERVER_INSTRUCTIONS,
     }
 
 
@@ -186,8 +189,16 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
         MCPError: Tool 不存在或執行失敗
     """
     params = body.get("params", {})
+    if not isinstance(params, dict):
+        raise MCPError(-32602, "Invalid params: params must be an object")
+
     tool_name = params.get("name")
+    if not isinstance(tool_name, str) or not tool_name:
+        raise MCPError(-32602, "Invalid params: name is required")
+
     args = params.get("arguments", {})
+    if not isinstance(args, dict):
+        raise MCPError(-32602, "Invalid params: arguments must be an object")
 
     start_time = time.perf_counter()
     logger.info(f"⏳ [Tool Start] {tool_name} | Args: {str(args)[:200]}{'...' if len(str(args)) > 200 else ''}")
@@ -204,7 +215,7 @@ async def _handle_tools_call(body: dict, request: Request) -> dict:
     except Exception as e:
         duration = time.perf_counter() - start_time
         logger.error(f"🔥 [Tool Error] {tool_name} | Duration: {duration:.3f}s | Error: {str(e)}")
-        raise e
+        raise
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -228,25 +239,20 @@ async def mcp_get(req: Request) -> dict:
         "status": "ok",
         "authenticated": True,
         "protocol": "MCP 2024-11-05",
-        "version": "4.0.0",
+        "version": __version__,
         "architecture": "modular",
         "features": ["shell_execution"],
         "tools_loaded": registry.get_tool_count(),
         "security": {
             "api_key_required": True,
             "auth_method": "Authorization: Bearer <AUTH_KEY>",
+            "rate_limit": "10 failed attempts / 60s per client",
         },
         "python": version_info,
-        "config": {"work_directory": str(WORK_DIR.absolute()), "exec_timeout": MAX_EXECUTION_TIME, "max_output_length": MAX_OUTPUT_LENGTH},
+        "config": {"work_directory": str(WORK_DIR), "exec_timeout": MAX_EXECUTION_TIME, "max_output_length": MAX_OUTPUT_LENGTH},
     }
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 啟動入口
-# ═══════════════════════════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    logger.info(f"🔧 已載入 {registry.get_tool_count()} 個 Tools")
-    logger.info(f"📂 預計工作目錄: {WORK_DIR.absolute()}")
-
-    uvicorn.run(app, host=MCP_HOST, port=MCP_PORT)
+if __name__ == "__main__":  # pragma: no cover
+    # 唯一入口為 python -m mcp_server（__main__.py）；此處僅提示使用者，避免出現不顯示 AUTH_KEY 的第二條啟動路徑
+    raise SystemExit("請以 `python -m mcp_server` 啟動服務（AUTH_KEY 會於啟動畫面顯示）")

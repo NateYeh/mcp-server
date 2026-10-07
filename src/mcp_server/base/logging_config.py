@@ -9,21 +9,12 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-# 預設外部套件日誌等級
+# 預設外部套件日誌等級（僅列出本服務實際使用到的套件）
 EXTERNAL_LOG = [
-    "yfinance",
-    "peewee",
-    "urllib3",
-    "PIL",
-    "qbittorrentapi",
+    "uvicorn",
+    "uvicorn.error",
+    "uvicorn.access",
     "asyncio",
-    "fakeredis",
-    "docket.worker",
-    "playwright",
-    "httpx",
-    "httpcore",
-    "charset_normalizer",
-    "websockets",
 ]
 
 # 日誌時間格式

@@ -36,8 +36,8 @@ mcp-server/
 │   ├── ARCHITECTURE.md        # 詳細架構與開發範式
 │   └── SELF_HEALING_MEMO.md   # 故障排除備忘錄
 ├── .env.example               # 環境變數範本
-├── pyproject.toml             # 套件與工具設定（ruff / mypy / pyright）
-└── workspace/                 # 執行工作目錄（runtime 自動建立，不進版控）
+├── pyproject.toml             # 套件依賴與工具設定（ruff / pyright）；版本號唯一來源
+└── workspace/                 # 執行工作目錄（服務啟動時建立並清空，不進版控）
 ```
 
 ## 認證機制
@@ -49,14 +49,36 @@ mcp-server/
   - 缺少或格式錯誤 → `401`
   - 金鑰不符 → `403`
 - 驗證邏輯在 `security.py` 的 `verify_api_key()`，使用 `hmac.compare_digest` 常數時間比較。
+- 失敗次數限制：同一來源 IP 於 60 秒內失敗達 10 次即回 `429`（`Retry-After: 60`），避免暴力嘗試。
 - 已移除多金鑰（`MCP_API_KEYS`）、Tool 權限白名單／排除清單與 Gmail 帳號綁定機制。
+
+## 安全模型
+
+- **唯一的存取控制是 `AUTH_KEY`**（加上監聽位址）。本服務的設計目的就是執行任意 shell，
+  因此不提供命令黑名單——子字串黑名單容易被引號、變數、`$IFS` 等方式繞過，只會給人錯誤的安全感。
+- 因此：`AUTH_KEY` 等同於機器上的 shell 權限，務必只使用於可信任網段（建議 `MCP_HOST=127.0.0.1`），
+  且不得寫進版控。
+- 日誌不記錄金鑰本身（Authorization 格式錯誤時僅記錄 scheme）。
 
 ## MCP 端點
 
 | 方法 | 路徑 | 說明 |
 |------|------|------|
-| POST | `/mcp` | MCP 協議：`initialize`、`tools/list`、`tools/call` |
+| POST | `/mcp` | MCP 協議：`initialize`、`ping`、`tools/list`、`tools/call`、`prompts/list`、`resources/list`、`resources/templates/list` |
+| POST | `/mcp` | JSON-RPC 通知（無 `id`，如 `notifications/initialized`）→ `202 Accepted`、無 body |
 | GET | `/mcp` | 健康檢查（回傳版本、已載入工具數、設定摘要） |
+
+未實作的 `prompts/*`、`resources/*` 回傳**空清單**（非錯誤）：部分客戶端（如 Claude Code）在連線後固定會發送這些 discovery 請求。
+
+## 執行限制
+
+| 項目 | 行為 |
+|------|------|
+| 逾時 | 上限固定 300s（`MAX_TIMEOUT_LIMIT`），`MCP_EXEC_TIMEOUT` 超過上限會被夾制並記錄警告 |
+| 輸出 | **邊讀邊截斷**：stdout / stderr 各保留 `MCP_MAX_OUTPUT` 位元組（預設 1,000,000），超過即終止整個進程組並回 `OutputLimitError`（不會先把無限輸出讀進記憶體） |
+| 輸入 | 命令長度上限 `MCP_MAX_INPUT` |
+| 工作目錄 | `MCP_SHELL_CWD` 不存在時直接回錯誤，**不自動建立目錄** |
+| 進程 | `start_new_session=True` 建立新進程組；逾時或輸出超限時以 `killpg(SIGKILL)` 終止整組（含子孫行程） |
 
 ## 執行與驗證
 
@@ -114,3 +136,10 @@ curl -s -X POST http://127.0.0.1:8000/mcp \
 - 透過 `mcp_server.base.logging_config.setup_logging()` 初始化（console 彩色輸出 + 檔案輪替）。
 - 日誌檔：`logs/mcp_server.log`（10 MB × 5 份輪替）。
 - `workspace/` 於服務啟動時清空，僅作為工具執行的工作目錄。
+
+## 其他注意事項
+
+- 版本號以 `pyproject.toml` 為唯一來源，程式內一律讀取 `mcp_server.__version__`（`importlib.metadata`），不得硬編碼。
+- 路徑類環境變數（`PYTHON_WORK_DIR`、`MCP_SHELL_CWD`）的相對路徑以**專案根目錄**為基準，不受啟動時 CWD 影響。
+- 唯一啟動入口為 `python -m mcp_server`（`app.py` 直接執行會被擋下，避免出現不顯示 AUTH_KEY 的啟動路徑）。
+- 無 CORS middleware：本服務無瀏覽器客戶端。

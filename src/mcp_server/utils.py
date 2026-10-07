@@ -20,12 +20,12 @@ def format_tool_result(result: ExecutionResult) -> dict[str, Any]:
         result: 執行結果
 
     Returns:
-        MCP 格式的字典
+        MCP 格式的字典（額外資訊置於標準的 `_meta` 欄位）
     """
     text_output = result.to_text_output()
-    response = {"content": [{"type": "text", "text": text_output}], "isError": not result.success}
+    response: dict[str, Any] = {"content": [{"type": "text", "text": text_output}], "isError": not result.success}
     if result.metadata:
-        response["metadata"] = result.metadata
+        response["_meta"] = result.metadata
 
     # 記錄回覆長度
     logger.info(
@@ -36,10 +36,3 @@ def format_tool_result(result: ExecutionResult) -> dict[str, Any]:
     )
 
     return response
-
-
-def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> str:
-    """截斷過長的字串"""
-    if len(text) > max_length:
-        return text[:max_length] + suffix
-    return text

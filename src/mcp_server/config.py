@@ -2,6 +2,9 @@
 環境設定與常數
 
 集中管理所有配置項，從環境變數載入。
+
+路徑類設定（PYTHON_WORK_DIR、MCP_SHELL_CWD）的相對路徑一律以**專案根目錄**為基準，
+避免受服務啟動時的工作目錄（CWD）影響而產生非預期的位置。
 """
 
 import logging
@@ -25,6 +28,57 @@ ENV_PATH = PROJECT_ROOT / ".env"
 if ENV_PATH.exists():
     load_dotenv(ENV_PATH)
 
+
+def _env_int(name: str, default: int, minimum: int, maximum: int | None = None) -> int:
+    """
+    讀取整數型環境變數並夾制於允許範圍
+
+    設定值不合法時記錄日誌並退回預設值，避免服務在 import 期直接崩潰。
+
+    Args:
+        name: 環境變數名稱
+        default: 未設定或無法解析時採用的預設值
+        minimum: 允許的最小值
+        maximum: 允許的最大值（None 表示不設上限）
+
+    Returns:
+        int: 合法的設定值
+    """
+    raw = os.getenv(name, "")
+    if not raw.strip():
+        return default
+
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        logger.error(f"環境變數 {name}={raw!r} 不是合法整數，改用預設值 {default}")
+        return default
+
+    if value < minimum:
+        logger.warning(f"環境變數 {name}={value} 低於下限 {minimum}，已調整為 {minimum}")
+        return minimum
+    if maximum is not None and value > maximum:
+        logger.warning(f"環境變數 {name}={value} 超過上限 {maximum}，已調整為 {maximum}")
+        return maximum
+    return value
+
+
+def _resolve_path(raw: str) -> Path:
+    """
+    將設定值解析為絕對路徑（相對路徑以專案根目錄為基準）
+
+    Args:
+        raw: 環境變數的原始字串值
+
+    Returns:
+        Path: 絕對路徑
+    """
+    path = Path(raw.strip() or ".").expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return path.resolve()
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 認證設定 - 單一 AUTH_KEY
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -40,25 +94,31 @@ if AUTH_KEY_GENERATED:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 伺服器設定
 # ═══════════════════════════════════════════════════════════════════════════════
-MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
-MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
+MCP_HOST = os.getenv("MCP_HOST", "").strip() or "0.0.0.0"
+MCP_PORT = _env_int("MCP_PORT", 8000, minimum=1, maximum=65535)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 路徑設定
 # ═══════════════════════════════════════════════════════════════════════════════
-# 修正工作目錄路徑，避免巢狀目錄問題
-_raw_work_dir = os.getenv("PYTHON_WORK_DIR", "workspace")
-WORK_DIR = (PROJECT_ROOT / _raw_work_dir[2:]).resolve() if _raw_work_dir.startswith("./") else Path(_raw_work_dir).resolve()
-
-WORK_DIR.mkdir(parents=True, exist_ok=True)
+# 工作目錄（服務啟動時清空）
+WORK_DIR = _resolve_path(os.getenv("PYTHON_WORK_DIR", "workspace"))
 
 # Shell 預設執行目錄
-DEFAULT_SHELL_CWD = Path(os.getenv("MCP_SHELL_CWD", "."))
+DEFAULT_SHELL_CWD = _resolve_path(os.getenv("MCP_SHELL_CWD", "."))
 
 
 def cleanup_work_directory() -> None:
-    """清理工作目錄中的所有檔案"""
-    WORK_DIR.mkdir(parents=True, exist_ok=True)
+    """
+    建立並清空工作目錄
+
+    Raises:
+        OSError: 工作目錄無法建立時向上拋出，避免服務在無工作目錄的狀態下繼續運作
+    """
+    try:
+        WORK_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        logger.exception(f"無法建立工作目錄: {WORK_DIR}")
+        raise
 
     cleaned_count = 0
     for item in WORK_DIR.iterdir():
@@ -78,12 +138,8 @@ def cleanup_work_directory() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 執行限制
 # ═══════════════════════════════════════════════════════════════════════════════
-MAX_EXECUTION_TIME = int(os.getenv("MCP_EXEC_TIMEOUT", "300"))
-MAX_INPUT_LENGTH = int(os.getenv("MCP_MAX_INPUT", "1000000"))
-MAX_OUTPUT_LENGTH = int(os.getenv("MCP_MAX_OUTPUT", "1000000"))
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 安全設定
-# ═══════════════════════════════════════════════════════════════════════════════
-# Shell 危險指令黑名單（命中即拒絕執行）
-DANGEROUS_SHELL_PATTERNS: list[str] = []
+# 逾時上限固定為 300 秒，避免環境變數設定過大導致失控
+MAX_TIMEOUT_LIMIT = 300
+MAX_EXECUTION_TIME = _env_int("MCP_EXEC_TIMEOUT", 300, minimum=1, maximum=MAX_TIMEOUT_LIMIT)
+MAX_INPUT_LENGTH = _env_int("MCP_MAX_INPUT", 1000000, minimum=1)
+MAX_OUTPUT_LENGTH = _env_int("MCP_MAX_OUTPUT", 1000000, minimum=1)

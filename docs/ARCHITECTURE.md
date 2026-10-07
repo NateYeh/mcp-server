@@ -6,10 +6,10 @@
 
 專案採用 `src-layout` 結構，主要代碼位於 `src/mcp_server/`。
 
-- **`__main__.py`**: 入口。初始化日誌、清理工作目錄、顯示本次 `AUTH_KEY`、啟動 uvicorn。
-- **`app.py`**: FastAPI 應用。負責 `/mcp` 路由、MCP 協議處理（`initialize` / `tools/list` / `tools/call`）與工具分發。
-- **`config.py`**: 全域配置中心。包含 `AUTH_KEY`、伺服器監聽位址、路徑、執行限制與 `DANGEROUS_SHELL_PATTERNS`。
-- **`security.py`**: 認證層。`verify_api_key()` 以 `hmac.compare_digest` 比對 Bearer Token 與 `AUTH_KEY`。
+- **`__main__.py`**: 唯一入口。初始化日誌、顯示本次 `AUTH_KEY`、啟動 uvicorn（工作目錄清理由 lifespan 負責）。
+- **`app.py`**: FastAPI 應用。負責 `/mcp` 路由、MCP 協議處理（`initialize` / `ping` / `tools/list` / `tools/call` / `prompts/list` / `resources/*`）與工具分發；JSON-RPC 通知回 `202 Accepted`。
+- **`config.py`**: 全域配置中心。包含 `AUTH_KEY`、伺服器監聽位址、路徑、執行限制；環境變數以 `_env_int()` 驗證並夾制，相對路徑以專案根目錄為基準。
+- **`security.py`**: 認證層。`verify_api_key()` 以 `hmac.compare_digest` 比對 Bearer Token 與 `AUTH_KEY`，並限制失敗次數（60 秒內 10 次 → 429）。
 - **`tools/`**: **【核心擴展區】**
     -   `base.py`: 提供 `ToolRegistry` 單例與 `@registry.register` 裝飾器。
     -   `__init__.py`: `_discover_tools()` 自動遍歷子目錄並匯入所有工具模組。
@@ -44,9 +44,10 @@
 
 ## 🛡️ 安全機制規範
 
-- **認證**: 僅接受 `Authorization: Bearer <AUTH_KEY>`；缺 Header／格式錯誤 → 401，金鑰錯誤 → 403。
-- **黑名單**: `execute_shell` 執行前比對 `config.DANGEROUS_SHELL_PATTERNS`（預設空清單，可依需求增補）。
-- **資源限制**: 工具應尊重 `MAX_EXECUTION_TIME`、`MAX_INPUT_LENGTH`、`MAX_OUTPUT_LENGTH`。
+- **認證**: 僅接受 `Authorization: Bearer <AUTH_KEY>`；缺 Header／格式錯誤 → 401，金鑰錯誤 → 403，失敗過多 → 429。
+- **不設命令黑名單**: 本服務目的即執行任意 shell，子字串黑名單容易被繞過，因此不提供；存取控制完全靠 `AUTH_KEY` 與監聽位址（詳見 [../README.md](../README.md) 的「安全提醒」）。
+- **資源限制**: 工具應尊重 `MAX_EXECUTION_TIME`（上限 300s）、`MAX_INPUT_LENGTH`、`MAX_OUTPUT_LENGTH`。
+  `execute_shell` 以 `start_new_session=True` 建立獨立進程組，採「邊讀邊截斷」方式讀取輸出，逾時或超限時以 `killpg(SIGKILL)` 終止整組。
 
 ## 🔍 代碼執行數據流
 

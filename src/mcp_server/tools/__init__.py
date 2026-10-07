@@ -33,12 +33,10 @@ def _discover_tools() -> None:
     tools_dir = Path(__file__).parent
 
     for item in tools_dir.iterdir():
-        # 跳過非目錄、隱藏目錄、__pycache__ 和 base.py
+        # 跳過非目錄與底線開頭的目錄（含 __pycache__）
         if not item.is_dir():
             continue
         if item.name.startswith("_"):
-            continue
-        if item.name == "__pycache__":
             continue
 
         # 檢查是否有 __init__.py 或同名 .py 檔案
@@ -54,16 +52,13 @@ def _discover_tools() -> None:
             module_name = f"mcp_server.tools.{item.name}"
             importlib.import_module(module_name)
             logger.debug(f"已載入工具模組: {item.name}")
-        except ImportError as e:
-            logger.warning(f"載入工具模組失敗 {item.name}: {e}")
-        except Exception as e:
-            logger.exception(f"載入工具模組時發生錯誤 {item.name}: {e}")
+        except Exception:
+            # 載入失敗代表該工具不會被註冊，屬功能缺失，需完整記錄
+            logger.exception(f"載入工具模組失敗，該工具將不會註冊: {item.name}")
 
 
 # 執行工具發現
 _discover_tools()
-
-logger.info(f"🔧 已載入 {registry.get_tool_count()} 個 Tool 模組")
 
 __all__ = [
     # Core

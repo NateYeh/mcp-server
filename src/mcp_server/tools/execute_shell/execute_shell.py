@@ -9,16 +9,17 @@ import contextlib
 import logging
 import os
 import signal
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from mcp_server.config import (
-    DANGEROUS_SHELL_PATTERNS,
     DEFAULT_SHELL_CWD,
     MAX_EXECUTION_TIME,
     MAX_INPUT_LENGTH,
     MAX_OUTPUT_LENGTH,
+    MAX_TIMEOUT_LIMIT,
 )
 from mcp_server.tools.base import registry
 
@@ -26,15 +27,67 @@ from .. import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
+# 每次從子行程 pipe 讀取的位元組數
+_READ_CHUNK_SIZE = 65536
+
+
+def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
+    """
+    終止子行程所屬的整個進程組
+
+    進程已結束或已無權限時靜默略過（此處為收尾動作，失敗不應影響回應）。
+    """
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+
+
+async def _read_stream_capped(stream: asyncio.StreamReader, limit: int, on_overflow: Callable[[], None]) -> tuple[bytes, bool]:
+    """
+    讀取子行程輸出，最多保留 limit 個位元組
+
+    超過上限時立即停止讀取並呼叫 on_overflow（通常用於終止子行程），
+    避免呼叫端為了等逾時而白等，也避免將無上限的輸出累積於記憶體。
+
+    Args:
+        stream: 子行程的 stdout 或 stderr
+        limit: 保留的位元組上限
+        on_overflow: 超出上限時呼叫的無參數函式
+
+    Returns:
+        tuple[bytes, bool]: (擷取到的內容, 是否因超過上限而截斷)
+    """
+    buffer = bytearray()
+    while True:
+        chunk = await stream.read(_READ_CHUNK_SIZE)
+        if not chunk:
+            return bytes(buffer), False
+
+        remaining = limit - len(buffer)
+        if remaining <= 0:
+            # 已達上限且仍有未讀資料
+            on_overflow()
+            return bytes(buffer), True
+
+        buffer.extend(chunk[:remaining])
+        if len(chunk) > remaining:
+            on_overflow()
+            return bytes(buffer), True
+
 
 @registry.register(
     name="execute_shell",
-    description="執行 Linux Shell 命令（使用 bash）。支援管道、重定向、環境變數等標準 shell 語法。可用於檔案操作、系統查詢、文字處理等。請注意：避免執行危險命令。",
+    description="執行 Linux Shell 命令（使用 bash）。支援管道、重定向、環境變數等標準 shell 語法。可用於檔案操作、系統查詢、文字處理等。",
     input_schema={
         "type": "object",
         "properties": {
             "command": {"type": "string", "description": "要執行的 shell 命令，支援 bash 語法。例如 'ls -la', 'cat file.txt', 'ps aux | grep python'"},
-            "timeout": {"type": "integer", "default": MAX_EXECUTION_TIME, "minimum": 1, "maximum": 300, "description": "執行超時時間（秒），預設 300 秒，最大 300 秒"},
+            "timeout": {
+                "type": "integer",
+                "default": MAX_EXECUTION_TIME,
+                "minimum": 1,
+                "maximum": MAX_TIMEOUT_LIMIT,
+                "description": f"執行超時時間（秒），預設 {MAX_EXECUTION_TIME} 秒，最大 {MAX_TIMEOUT_LIMIT} 秒",
+            },
         },
         "required": ["command"],
     },
@@ -53,8 +106,10 @@ async def handle_execute_shell(args: dict[str, Any]) -> ExecutionResult:
             execution_time="0.000s",
         )
 
-    timeout = args.get("timeout", MAX_EXECUTION_TIME)
-    if not isinstance(timeout, int) or timeout < 1 or timeout > 300:
+    timeout = args.get("timeout")
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or not (1 <= timeout <= MAX_TIMEOUT_LIMIT):
+        if timeout is not None:
+            logger.warning(f"timeout 參數不合法（{timeout!r}），改用預設值 {MAX_EXECUTION_TIME}s")
         timeout = MAX_EXECUTION_TIME
 
     logger.info(f"執行 Shell 命令 ({len(command)} 字符)")
@@ -87,25 +142,18 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
                 execution_time="0.000s",
             )
 
-        # 安全性檢查
-        cmd_normalized = command.lower().replace(" ", "")
-        for pattern in DANGEROUS_SHELL_PATTERNS:
-            if pattern.replace(" ", "") in cmd_normalized:
-                logger.warning(f"檢測到危險命令模式: {pattern}")
-                return ExecutionResult(
-                    success=False,
-                    error_type="SecurityError",
-                    error_message=f"檢測到潛在危險命令: {pattern}",
-                    returncode=-1,
-                    execution_time="0.000s",
-                )
-
         cwd = str(working_dir) if working_dir else str(DEFAULT_SHELL_CWD)
 
-        # 確保工作目錄存在
-        if not Path(cwd).exists():
-            Path(cwd).mkdir(parents=True, exist_ok=True)
-            logger.warning(f"工作目錄不存在，已創建: {cwd}")
+        # 不自動建立目錄，避免在非預期位置產生檔案系統變更
+        if not Path(cwd).is_dir():
+            logger.warning(f"工作目錄不存在或非目錄: {cwd}")
+            return ExecutionResult(
+                success=False,
+                error_type="FileNotFoundError",
+                error_message=f"工作目錄不存在: {cwd}",
+                returncode=-1,
+                execution_time="0.000s",
+            )
 
         logger.info(f"執行 Shell 命令: {command[:100]}{'...' if len(command) > 100 else ''} (timeout={timeout}s)")
 
@@ -115,39 +163,78 @@ async def execute_shell_command(command: str, timeout: int = MAX_EXECUTION_TIME,
             stderr=asyncio.subprocess.PIPE,
             cwd=cwd,
             executable="/bin/bash",
-            preexec_fn=os.setsid,  # 建立新進程組
+            start_new_session=True,  # 建立新進程組，逾時可整組終止（等價 os.setsid 且執行緒安全）
         )
         logger.info(f"🐚 Shell 進程已啟動 | PID: {proc.pid}")
 
+        # 已指定 stdout/stderr 為 PIPE，此處僅為了型別收窄
+        if proc.stdout is None or proc.stderr is None:
+            raise RuntimeError("無法建立子行程的輸出管道")
+
+        truncated = False
+
+        def _on_overflow() -> None:
+            """輸出超過上限：立刻終止進程組，避免子行程阻塞在 pipe 上等逾時"""
+            nonlocal truncated
+            truncated = True
+            _kill_process_group(proc)
+
+        stdout_task = asyncio.create_task(_read_stream_capped(proc.stdout, MAX_OUTPUT_LENGTH, _on_overflow))
+        stderr_task = asyncio.create_task(_read_stream_capped(proc.stderr, MAX_OUTPUT_LENGTH, _on_overflow))
+        read_task = asyncio.gather(stdout_task, stderr_task)
+
+        timed_out = False
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            # shield 避免逾時時取消讀取任務，才能取回已讀到的輸出
+            await asyncio.wait_for(asyncio.shield(read_task), timeout=timeout)
         except asyncio.TimeoutError:
-            # 殺掉整個進程組
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            await proc.wait()
+            timed_out = True
             logger.warning(f"Shell 執行超時 ({timeout}s)，整個進程組已終止")
-            return ExecutionResult(
-                success=False, error_type="TimeoutError", stderr=f"Execution timeout after {timeout}s", returncode=-1, execution_time=f">{timeout}s", metadata={"command": command}
-            )
+            _kill_process_group(proc)
+            await read_task
+        finally:
+            if proc.returncode is None:
+                await proc.wait()
+
+        stdout_bytes, stdout_truncated = stdout_task.result()
+        stderr_bytes, stderr_truncated = stderr_task.result()
+        truncated = truncated or stdout_truncated or stderr_truncated
 
         stdout_text = stdout_bytes.decode("utf-8", errors="replace")
         stderr_text = stderr_bytes.decode("utf-8", errors="replace")
+        execution_time = f"{(datetime.now() - start_time).total_seconds():.3f}s"
 
-        # 截斷過長輸出
-        if len(stdout_text) > MAX_OUTPUT_LENGTH:
-            stdout_text = stdout_text[:MAX_OUTPUT_LENGTH] + "... [truncated]"
-        if len(stderr_text) > MAX_OUTPUT_LENGTH:
-            stderr_text = stderr_text[:MAX_OUTPUT_LENGTH] + "... [truncated]"
+        if timed_out:
+            return ExecutionResult(
+                success=False,
+                error_type="TimeoutError",
+                stderr=f"Execution timeout after {timeout}s",
+                returncode=proc.returncode if proc.returncode is not None else -1,
+                execution_time=f">{timeout}s",
+                metadata={"command": command},
+            )
 
-        execution_time = (datetime.now() - start_time).total_seconds()
+        if truncated:
+            note = f"輸出超過上限 {MAX_OUTPUT_LENGTH} 字元，內容已截斷並終止命令"
+            logger.warning(f"{note} | 命令: {command[:100]}")
+            stderr_text = f"{stderr_text}\n[truncated] {note}" if stderr_text else f"[truncated] {note}"
+            return ExecutionResult(
+                success=False,
+                error_type="OutputLimitError",
+                error_message=note,
+                stdout=stdout_text,
+                stderr=stderr_text,
+                returncode=proc.returncode if proc.returncode is not None else -1,
+                execution_time=execution_time,
+                metadata={"command": command},
+            )
 
         return ExecutionResult(
             success=proc.returncode == 0,
             stdout=stdout_text,
             stderr=stderr_text,
             returncode=proc.returncode or 0,
-            execution_time=f"{execution_time:.3f}s",
+            execution_time=execution_time,
             metadata={"command": command},
         )
 
