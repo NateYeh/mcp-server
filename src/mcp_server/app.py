@@ -10,7 +10,7 @@ import time
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -96,13 +96,14 @@ async def mcp_exception_handler(request: Request, exc: MCPError):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@app.post("/mcp")
-async def mcp_endpoint(req: Request) -> dict:
+@app.post("/mcp", response_model=None)
+async def mcp_endpoint(req: Request) -> dict | Response:
     """
     MCP 協議端點，受 Bearer Token 保護
 
     - Tool 處理邏輯位於 tools/ 目錄
     - 此處僅負責路由與協議層處理
+    - JSON-RPC 通知（無 id）不回應内容，依 Streamable HTTP 規範回 202 Accepted
     """
     await verify_api_key(req)
 
@@ -111,6 +112,15 @@ async def mcp_endpoint(req: Request) -> dict:
     except Exception:
         logger.warning("請求 JSON 解析失敗")
         return {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error: Invalid JSON"}}
+
+    if not isinstance(body, dict):
+        logger.warning("請求內容非 JSON-RPC 物件")
+        return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Invalid Request: batch requests are not supported"}}
+
+    # 通知（如 notifications/initialized）不帶 id，不應回傳任何内容
+    if "id" not in body:
+        logger.debug(f"收到通知，不回傳内容: {body.get('method')}")
+        return Response(status_code=status.HTTP_202_ACCEPTED)
 
     req_id = body.get("id")
     method = body.get("method")
@@ -141,7 +151,7 @@ def _handle_initialize() -> dict:
     """處理 initialize method"""
     return {
         "protocolVersion": "2024-11-05",
-        "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
+        "capabilities": {"tools": {}},
         "serverInfo": {
             "name": "NATE-MCP-SERVER",
             "version": "4.0.0",
