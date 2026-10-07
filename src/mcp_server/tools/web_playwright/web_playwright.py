@@ -110,16 +110,16 @@ class BrowserManager:
                     except Exception as e:
                         logger.warning(f"遠端連線 {endpoint} 失敗: {e}，準備嘗試下一種模式。")
 
-            # 如果 CDP 連線失敗或未定義，則啟動容器內建瀏覽器 (Fallback)
+            # 如果 CDP 連線失敗或未定義，則啟動本機內建瀏覽器 (Fallback)
             if self._browser is None:
                 try:
                     import os
 
                     headless = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
-                    logger.info(f"正在啟動容器內建 Chromium 瀏覽器 (headless={headless})...")
+                    logger.info(f"正在啟動本機內建 Chromium 瀏覽器 (headless={headless})...")
                     self._browser = await self._playwright.chromium.launch(
                         headless=headless,
-                        args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],  # Docker 環境必備
+                        args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],  # 無沙箱與共用記憶體參數，適用於受限環境 (root/容器/CI)
                     )
                     logger.info(f"✅ 已啟動內建瀏覽器: {self._browser.version}")
                 except Exception as e:

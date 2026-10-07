@@ -14,39 +14,45 @@ NATE-MCP-SERVER 是一個基於 **Model Context Protocol (MCP)** 的強力工具
 
 ### 1. 環境需求
 - Python 3.10+
-- Docker & Docker Compose (推薦方式)
+- （選用）Chrome / Chromium，供 Playwright 瀏覽器自動化使用
 
-### 2. 使用 Docker 部署 (推薦)
-1.  **準備配置**: 
-    - 複製 `.env.example` 並重新命名為 `.env`，填入必要的 API Key。
-    - 複製 `docker-compose.example.yaml` 並重新命名為 `docker-compose.yaml`。
-2.  **路徑調整**: 如果是在 NAS 等特殊掛載路徑下執行，請確保 `docker-compose.yaml` 中的 `volumes` 物理路徑正確。
-3.  **啟動服務**:
+> 本專案僅支援本地直接執行，不提供容器化部署。
+
+### 2. 本地安裝
+1.  **建立虛擬環境並安裝依賴**:
     ```bash
-    # Docker Compose V2 (Docker 內建 plugin)
-    docker compose up -d
-    
-    # 或 Docker Compose V1 (獨立安裝版本)
-    docker-compose up -d
+    python -m venv .venv
+    source .venv/bin/activate        # Windows: .venv\Scripts\activate
+    pip install -e .
+    playwright install chromium
     ```
-    > ⚠️ **注意**: 不同安裝方式的 Docker Compose 有不同的命令格式：
-    > - **V2 Plugin**: 使用 `docker compose`（空格）
-    > - **V1 Standalone**: 使用 `docker-compose`（底線）
-    > 
-    > 可用 `docker compose version` 或 `docker-compose --version` 檢查你的版本。
+2.  **準備配置**:
+    - 複製 `.env.example` 並重新命名為 `.env`，填入必要的 API Key。
+    - 依實際環境調整 `PYTHON_WORK_DIR`、`MCP_HOST`、`MCP_PORT` 等路徑與埠號。
 
-### 3. 配置 Claude Desktop
-修改你的 `config.json` (通常位於 %AppData%\Cloud\config.json 或 ~/Library/Application Support/Claude/config.json)：
+### 3. 啟動服務
+```bash
+python -m mcp_server
+
+# 或使用啟動腳本（會先以開發模式安裝 natekit，再啟動服務）
+bash src/mcp_server/start.sh
+```
+服務預設監聽 `http://0.0.0.0:8000`（由 `.env` 的 `MCP_HOST` / `MCP_PORT` 決定）。
+
+### 4. 配置 Claude Desktop
+修改你的 `config.json` (通常位於 `%AppData%\Claude\config.json` 或 `~/Library/Application Support/Claude/config.json`)：
 ```json
 {
   "mcpServers": {
     "Nate-MCP": {
-      "command": "docker",
-      "args": ["exec", "-i", "mcp-server-container", "python", "-m", "mcp_server"]
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/absolute/path/to/mcp-server"
     }
   }
 }
 ```
+> 建議將 `command` 指向虛擬環境中的 Python（例如 `/absolute/path/to/mcp-server/.venv/bin/python`），以確保依賴正確載入。
 
 ## ⚙️ 環境變數配置摘要
 

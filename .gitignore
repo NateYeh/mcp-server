@@ -99,7 +99,6 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
-docker-compose.yaml
 
 CLAUDE.md
 .claude/
