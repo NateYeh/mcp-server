@@ -20,32 +20,8 @@ dependencies = [
     # Web Framework
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
-    
-    # Authentication & Security
+    # 環境變數載入
     "python-dotenv>=1.0.0",
-    
-    # Database
-    "pymysql>=1.1.0",
-    "aiomysql>=0.2.0",
-    
-    # HTTP & Web
-    "requests>=2.31.0",
-    "httpx>=0.25.0",
-    "beautifulsoup4>=4.12.0",
-    "lxml>=4.9.0",
-    "playwright>=1.40.0",
-    "websockets>=12.0",
-    
-    # Media & Image
-    "Pillow>=10.0.0",
-    "mutagen>=1.47.0",
-    
-    # AI & ML
-    "google-generativeai>=0.3.0",
-    
-    # Utilities
-    "python-dateutil>=2.8.0",
-    "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]

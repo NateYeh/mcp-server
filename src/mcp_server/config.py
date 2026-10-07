@@ -4,12 +4,12 @@
 集中管理所有配置項，從環境變數載入。
 """
 
-import json
 import logging
 import os
+import secrets
+import shutil
 import sys
 from pathlib import Path
-from typing import Any
 
 from dotenv import load_dotenv
 
@@ -25,65 +25,28 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 ENV_PATH = PROJECT_ROOT / ".env"
 if ENV_PATH.exists():
     load_dotenv(ENV_PATH)
-    logger.info(f"📁 已載入環境設定檔: {ENV_PATH}")
 
 # 將專案根目錄加入 sys.path，以便載入 natekit 等模組
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-    logger.info(f"📁 已將專案根目錄加入 sys.path: {PROJECT_ROOT}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 認證設定 - 單一 AUTH_KEY
 # ═══════════════════════════════════════════════════════════════════════════════
 # 認證金鑰來源為環境變數 AUTH_KEY；未設定時於每次啟動隨機產生（僅存在於記憶體，
-# 重啟後會變更）。產生的金鑰由 __main__.py 於服務啟動時顯示。
+# 重啟後會變更）。金鑰由 __main__.py 於服務啟動時顯示。
 
 AUTH_KEY = os.getenv("AUTH_KEY", "").strip()
 AUTH_KEY_GENERATED = not AUTH_KEY
 
 if AUTH_KEY_GENERATED:
-    import secrets
-
     AUTH_KEY = secrets.token_urlsafe(32)
-    logger.warning("⚠️ 未設定 AUTH_KEY，本次啟動已自動產生隨機金鑰（重啟後會變更）")
-else:
-    logger.info("🔐 已從環境變數 AUTH_KEY 載入認證金鑰")
 
-
-class APIKeyManager:
-    """各外部服務 API Key 管理類別"""
-
-    @staticmethod
-    def _load_json_env(key: str, default: Any = None) -> Any:
-        """從環境變數載入 JSON 格式的值"""
-        import base64
-
-        value = os.getenv(key, "")
-        if not value:
-            return default
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            try:
-                return json.loads(base64.b64decode(value).decode("utf-8"))
-            except Exception:
-                return default
-
-    @classmethod
-    def get_gemini_keys(cls) -> list[dict]:
-        """取得 Gemini API Keys"""
-        return cls._load_json_env("GEMINI_API_KEYS", [])
-
-    @classmethod
-    def get_deepseek_key(cls) -> str:
-        """取得 DeepSeek API Key"""
-        return os.getenv("DEEPSEEK_API_KEY", "")
-
-    @classmethod
-    def get_ollama_key(cls) -> str:
-        """取得 Ollama API Key"""
-        return os.getenv("OLLAMA_API_KEY", "")
-
+# ═══════════════════════════════════════════════════════════════════════════════
+# 伺服器設定
+# ═══════════════════════════════════════════════════════════════════════════════
+MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 路徑設定
@@ -100,31 +63,22 @@ DEFAULT_SHELL_CWD = Path(os.getenv("MCP_SHELL_CWD", "."))
 
 def cleanup_work_directory() -> None:
     """清理工作目錄中的所有檔案"""
-    import shutil
-
     WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-    if WORK_DIR.exists():
-        cleaned_count = 0
-        for item in WORK_DIR.iterdir():
-            try:
-                if item.is_file():
-                    item.unlink()
-                    cleaned_count += 1
-                elif item.is_dir():
-                    shutil.rmtree(item)
-                    cleaned_count += 1
-            except Exception as e:
-                logger.warning(f"無法清理 {item}: {e}")
-        if cleaned_count > 0:
-            logger.info(f"🧹 已清理工作目錄: 移除 {cleaned_count} 個項目")
+    cleaned_count = 0
+    for item in WORK_DIR.iterdir():
+        try:
+            if item.is_file():
+                item.unlink()
+                cleaned_count += 1
+            elif item.is_dir():
+                shutil.rmtree(item)
+                cleaned_count += 1
+        except OSError:
+            logger.exception(f"無法清理 {item}")
+    if cleaned_count > 0:
+        logger.info(f"🧹 已清理工作目錄: 移除 {cleaned_count} 個項目")
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 伺服器設定
-# ═══════════════════════════════════════════════════════════════════════════════
-MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
-MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 執行限制
@@ -136,157 +90,5 @@ MAX_OUTPUT_LENGTH = int(os.getenv("MCP_MAX_OUTPUT", "1000000"))
 # ═══════════════════════════════════════════════════════════════════════════════
 # 安全設定
 # ═══════════════════════════════════════════════════════════════════════════════
+# Shell 危險指令黑名單（命中即拒絕執行）
 DANGEROUS_SHELL_PATTERNS: list[str] = []
-DANGEROUS_PACKAGE_CHARS = [";", "|", "&", "$", "`", "||", "&&", "<", ">"]
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TMDB 設定
-# ═══════════════════════════════════════════════════════════════════════════════
-TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
-if TMDB_API_KEY:
-    logger.info("🎬 TMDB API Key 已載入")
-else:
-    logger.warning("⚠️ 未設定 TMDB_API_KEY，TMDB 搜尋功能將無法使用")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# MySQL 設定
-# ═══════════════════════════════════════════════════════════════════════════════
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "")
-MYSQL_MAX_ROWS = int(os.getenv("MYSQL_MAX_ROWS", "10000"))
-
-if MYSQL_USER and MYSQL_PASSWORD:
-    logger.info(f"🗄️ MySQL 連線設定已載入: {MYSQL_USER}@{MYSQL_HOST}:{MYSQL_PORT}")
-else:
-    logger.warning("⚠️ 未完整設定 MySQL 連線資訊，MySQL 執行功能可能無法使用")
-
-# MySQL 安全設定 - 危險 SQL 指令黑名單
-# 這些模式會被攔截，防止危險操作
-DANGEROUS_SQL_PATTERNS = [
-    "DROP DATABASE",
-    "DROP SCHEMA",
-    "TRUNCATE",  # 禁止 TRUNCATE（清空資料表）
-    "LOAD_FILE",  # 禁止讀取伺服器檔案
-    "INTO OUTFILE",  # 禁止寫入檔案
-    "INTO DUMPFILE",  # 禁止寫入二進制檔案
-    "-- ",  # SQL 註解攻擊（注意前後要有空格）
-    "/*",  # 多行註解攻擊
-    "*/",
-    "EXEC ",  # 預存程序執行
-    "EXECUTE ",
-    "xp_",  # SQL Server 擴展預存程序（防禦性加入）
-    "sp_",  # 預存程序前綴
-    "information_schema",  # 禁止存取系統資訊表
-    "mysql.user",  # 禁止存取使用者表
-    "sys.",  # 系統資料庫
-]
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Gmail 多帳號設定
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-def load_gmail_accounts() -> dict[str, dict[str, str]]:
-    """
-    從環境變數 GMAIL_ACCOUNTS 載入 Gmail 帳號設定
-
-    環境變數格式 (JSON):
-        GMAIL_ACCOUNTS={"alice@gmail.com":{"client_id":"xxx","client_secret":"xxx","refresh_token":"xxx"},"bob@gmail.com":{...}}
-
-    Returns:
-        dict: Gmail 帳號配置，key 為 email，value 包含 client_id, client_secret, refresh_token
-    """
-    raw = os.getenv("GMAIL_ACCOUNTS", "")
-    if not raw:
-        logger.debug("未設定 GMAIL_ACCOUNTS 環境變數")
-        return {}
-
-    try:
-        accounts = json.loads(raw)
-        if not isinstance(accounts, dict):
-            logger.warning("GMAIL_ACCOUNTS 格式錯誤：必須是 JSON 物件")
-            return {}
-
-        # 為每個帳號加入預設的 token_uri
-        default_token_uri = "https://oauth2.googleapis.com/token"
-        for _account_id, creds in accounts.items():
-            if "token_uri" not in creds:
-                creds["token_uri"] = default_token_uri
-
-        if accounts:
-            logger.info(f"📧 已載入 {len(accounts)} 個 Gmail 帳號設定")
-        return accounts
-    except json.JSONDecodeError:
-        logger.exception("GMAIL_ACCOUNTS JSON 解析失敗")
-        return {}
-    except Exception:
-        logger.exception("載入 Gmail 帳號設定失敗")
-        return {}
-
-
-# Gmail 帳號配置（全域）
-GMAIL_ACCOUNTS: dict[str, dict[str, str]] = load_gmail_accounts()
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Playwright Web Browser 設定
-# ═══════════════════════════════════════════════════════════════════════════════
-PLAYWRIGHT_CDP_ENDPOINT = os.getenv("PLAYWRIGHT_CDP_ENDPOINT", "http://127.0.0.1:9222")
-PLAYWRIGHT_DEFAULT_TIMEOUT = int(os.getenv("PLAYWRIGHT_DEFAULT_TIMEOUT", "30000"))  # 30 秒
-
-if PLAYWRIGHT_CDP_ENDPOINT:
-    logger.info(f"🌐 Playwright CDP Endpoint: {PLAYWRIGHT_CDP_ENDPOINT}")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 遠端瀏覽器設定（WebSocket 反向連線）
-# ═══════════════════════════════════════════════════════════════════════════════
-REMOTE_BROWSER_ENABLED = os.getenv("REMOTE_BROWSER_ENABLED", "true").lower() == "true"
-REMOTE_BROWSER_PORT = int(os.getenv("REMOTE_BROWSER_PORT", "8001"))
-REMOTE_BROWSER_TOKEN = os.getenv("REMOTE_BROWSER_TOKEN", "")  # 認證 Token
-
-if REMOTE_BROWSER_ENABLED:
-    logger.info(f"🔗 遠端瀏覽器功能已啟用，WebSocket Port: {REMOTE_BROWSER_PORT}")
-    if not REMOTE_BROWSER_TOKEN:
-        logger.warning("⚠️ 未設定 REMOTE_BROWSER_TOKEN，建議設定以提高安全性")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Ollama Web API 設定
-# ═══════════════════════════════════════════════════════════════════════════════
-OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "")
-OLLAMA_WEB_SEARCH_URL = os.getenv("OLLAMA_WEB_SEARCH_URL", "")
-OLLAMA_WEB_FETCH_URL = os.getenv("OLLAMA_WEB_FETCH_URL", "")
-OLLAMA_WEB_TIMEOUT = int(os.getenv("OLLAMA_WEB_TIMEOUT", "30"))
-
-if OLLAMA_API_KEY:
-    logger.info("🔍 Ollama Web API Key 已載入")
-else:
-    logger.warning("⚠️ 未設定 OLLAMA_API_KEY，Ollama Web API 功能將無法使用")
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Gemini API 設定
-# ═══════════════════════════════════════════════════════════════════════════════
-GEMINI_API_KEYS = APIKeyManager.get_gemini_keys()
-GEMINI_PAY_KEY = os.getenv("GEMINI_PAY_KEY", "")
-GEMINI_API_BASE_URL = os.getenv("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com")
-GEMINI_PROXY_URL = os.getenv("GEMINI_PROXY_URL", "")
-OLLAMA_PROXY_URL = os.getenv("OLLAMA_PROXY_URL", "")
-GEMINI_API_VERSION = "v1beta"
-
-GEMINI_MODEL_LIST = [
-    "models/gemini-3-flash-preview",
-    "models/gemini-3-pro-preview",
-    "models/gemini-2.5-flash-lite",
-    "models/gemini-2.5-flash",
-    "models/gemini-2.5-pro",
-    "models/gemini-2.5-pro-preview-03-25",
-    "models/gemini-2.5-flash-image-preview",
-]
-
-GEMINI_SAFETY_SETTINGS = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-]
