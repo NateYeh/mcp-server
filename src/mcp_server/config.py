@@ -95,7 +95,7 @@ if AUTH_KEY_GENERATED:
 # 伺服器設定
 # ═══════════════════════════════════════════════════════════════════════════════
 MCP_HOST = os.getenv("MCP_HOST", "").strip() or "0.0.0.0"
-MCP_PORT = _env_int("MCP_PORT", 8000, minimum=1, maximum=65535)
+MCP_PORT = _env_int("MCP_PORT", 30096, minimum=1, maximum=65535)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 路徑設定

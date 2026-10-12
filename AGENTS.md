@@ -95,7 +95,7 @@ ruff check src/
 pyright src/
 
 # 冒煙測試
-curl -s -X POST http://127.0.0.1:8000/mcp \
+curl -s -X POST http://127.0.0.1:30096/mcp \
   -H "Authorization: Bearer <AUTH_KEY>" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
        "params":{"name":"execute_shell","arguments":{"command":"echo hi"}}}'

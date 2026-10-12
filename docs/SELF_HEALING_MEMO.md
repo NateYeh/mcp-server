@@ -21,17 +21,17 @@
 
   ```bash
   # 1) 找出正在監聽該埠的 PID（精準）
-  PID=$(ss -ltnp 2>/dev/null | grep ':8000' | grep -oP 'pid=\K[0-9]+' | head -1)
+  PID=$(ss -ltnp 2>/dev/null | grep ':30096' | grep -oP 'pid=\K[0-9]+' | head -1)
   kill "$PID"
 
   # 2) 等埠釋放後重新啟動
-  while ss -ltn | grep -q ':8000'; do sleep 1; done
+  while ss -ltn | grep -q ':30096'; do sleep 1; done
   cd /path/to/mcp-server && python -m mcp_server
   ```
 
 - 若服務以 `screen` 託管，改用 `screen -S <名稱> -X quit` 後重建；
   注意 `screen -X quit` **不會**終止其子行程，仍需以上述 PID 方式確認埠已釋放。
-- 本專案無容器自啟動機制；重啟後務必確認服務已恢復（`curl -H "Authorization: Bearer $AUTH_KEY" http://127.0.0.1:8000/mcp`）。
+- 本專案無容器自啟動機制；重啟後務必確認服務已恢復（`curl -H "Authorization: Bearer $AUTH_KEY" http://127.0.0.1:30096/mcp`）。
 
 ## 💡 給未來的我
 > **改完代碼要重啟；路徑一律以專案根目錄為基準；重啟一律用精準 PID，不要 `pkill -f`。**

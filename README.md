@@ -36,7 +36,7 @@ python -m mcp_server
 # 或使用啟動腳本（直接執行 python -m mcp_server）
 bash src/mcp_server/start.sh
 ```
-服務監聽位址由 `.env` 的 `MCP_HOST` / `MCP_PORT` 決定（預設 `http://0.0.0.0:8000`）。
+服務監聽位址由 `.env` 的 `MCP_HOST` / `MCP_PORT` 決定（預設 `http://0.0.0.0:30096`）。
 啟動時 console 會顯示本次使用的認證金鑰：
 
 ```
@@ -65,7 +65,7 @@ bash src/mcp_server/start.sh
 以 CLI 加入（`--scope user` 為所有專案可用）：
 
 ```bash
-claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
+claude mcp add --transport http nate-mcp http://127.0.0.1:30096/mcp \
   --header "Authorization: Bearer <你的 AUTH_KEY>" --scope user
 ```
 
@@ -76,14 +76,14 @@ claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
   "mcpServers": {
     "nate-mcp": {
       "type": "http",
-      "url": "http://127.0.0.1:8000/mcp",
+      "url": "http://127.0.0.1:30096/mcp",
       "headers": { "Authorization": "Bearer <你的 AUTH_KEY>" }
     }
   }
 }
 ```
 
-伺服器在另一台機器時，將 `url` 改為 `http://192.168.0.30:8000/mcp`。
+伺服器在另一台機器時，將 `url` 改為 `http://192.168.0.30:30096/mcp`。
 
 **注意事項**
 
@@ -122,7 +122,7 @@ claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
       "args": [
         "-y",
         "mcp-remote@latest",
-        "http://127.0.0.1:8000/mcp",
+        "http://127.0.0.1:30096/mcp",
         "--transport", "http-only",
         "--allow-http",
         "--header", "Authorization:${AUTH_HEADER}"
@@ -143,7 +143,7 @@ claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
       "args": [
         "-y",
         "mcp-remote@latest",
-        "http://192.168.0.30:8000/mcp",
+        "http://192.168.0.30:30096/mcp",
         "--transport", "http-only",
         "--allow-http",
         "--header", "Authorization:${AUTH_HEADER}"
@@ -188,24 +188,24 @@ claude mcp add --transport http nate-mcp http://127.0.0.1:8000/mcp \
 
 ```bash
 # 列出工具
-curl -s -X POST http://127.0.0.1:8000/mcp \
+curl -s -X POST http://127.0.0.1:30096/mcp \
   -H "Authorization: Bearer $AUTH_KEY" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # 執行命令
-curl -s -X POST http://127.0.0.1:8000/mcp \
+curl -s -X POST http://127.0.0.1:30096/mcp \
   -H "Authorization: Bearer $AUTH_KEY" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
        "params":{"name":"execute_shell","arguments":{"command":"ls -la"}}}'
 
 # 指定執行目錄（選填；相對路徑以 MCP_SHELL_CWD 為基準，預設為專案根目錄）
-curl -s -X POST http://127.0.0.1:8000/mcp \
+curl -s -X POST http://127.0.0.1:30096/mcp \
   -H "Authorization: Bearer $AUTH_KEY" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
        "params":{"name":"execute_shell","arguments":{"command":"git status -s","cwd":"apps/ai_novel","timeout":60}}}'
 
 # 健康檢查
-curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
+curl -s http://127.0.0.1:30096/mcp -H "Authorization: Bearer $AUTH_KEY"
 ```
 
 > 連線後客戶端會發送 `prompts/list`、`resources/list` 等 discovery 請求，本服務一律回傳空清單（非錯誤），
@@ -216,7 +216,7 @@ curl -s http://127.0.0.1:8000/mcp -H "Authorization: Bearer $AUTH_KEY"
 | 變數 | 說明 |
 |------|------|
 | `AUTH_KEY` | 唯一認證金鑰。留空時每次啟動自動產生隨機金鑰並顯示於 console（重啟即變更）。 |
-| `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:8000`）。建議僅本機使用時設為 `127.0.0.1`。 |
+| `MCP_HOST` / `MCP_PORT` | 服務監聽位址與埠號（預設 `0.0.0.0:30096`）。建議僅本機使用時設為 `127.0.0.1`。 |
 | `PYTHON_WORK_DIR` | 工作目錄（服務啟動時建立並清空，預設 `./workspace`）。 |
 | `MCP_SHELL_CWD` | `execute_shell` 的預設執行目錄（預設專案根目錄；不存在時直接回錯，不自動建立）。工具的 `cwd` 參數以相對路徑給值時，亦以此目錄為基準。 |
 | `MCP_EXEC_TIMEOUT` | 命令執行逾時秒數（預設 300；**上限固定 300**，超過會被夾制並記錄警告）。 |
